@@ -1,0 +1,691 @@
+/* ========================================
+   Hotel Stores Management System
+   Main Stylesheet
+   ======================================== */
+
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --danger-color: #e74c3c;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --info-color: #3498db;
+    --dark-color: #2c3e50;
+    --light-color: #ecf0f1;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+}
+
+/* ========================================
+   SIDEBAR
+   ======================================== */
+.sidebar {
+    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    min-height: 100vh;
+    height: 100vh;
+    padding: 20px 0;
+    position: fixed;
+    width: 250px;
+    left: 0;
+    top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
+
+.sidebar .nav {
+    padding-bottom: 20px;
+}
+
+.sidebar .brand {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 20px;
+}
+
+.sidebar .brand h4 {
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.sidebar .brand p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+}
+
+.sidebar .nav-item {
+    margin-bottom: 0;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    padding: 12px 20px;
+    border-left: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: rgba(102, 126, 234, 0.2);
+    border-left-color: #667eea;
+    color: white;
+}
+
+.sidebar .nav-link i {
+    margin-right: 10px;
+    width: 20px;
+}
+
+.sidebar .nav-section-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 15px 20px 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ========================================
+   TOP NAVBAR
+   ======================================== */
+.topbar {
+    background: white;
+    padding: 15px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-left: 250px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.topbar-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.mobile-nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #2c3e50;
+    flex: 0 0 auto;
+}
+
+.mobile-nav-toggle:hover {
+    background: #f8f9fa;
+}
+
+.mobile-breadcrumb {
+    display: none;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.mobile-breadcrumb a {
+    color: #667eea;
+    text-decoration: none;
+}
+
+.mobile-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: #95a5a6;
+}
+
+.breadcrumb-current {
+    color: #2c3e50;
+}
+
+.mobile-nav-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+
+.mobile-nav-drawer {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(86vw, 320px);
+    height: 100vh;
+    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    z-index: 1050;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.25);
+    overflow-y: auto;
+    overflow-x: hidden;
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    pointer-events: none;
+}
+
+.mobile-nav-drawer.open {
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.mobile-nav-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.mobile-nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mobile-nav-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mobile-nav-header p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.mobile-nav-close {
+    border: 0;
+    background: transparent;
+    color: white;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.mobile-nav-links {
+    padding-bottom: 20px;
+}
+
+.mobile-nav-links .nav-link {
+    color: rgba(255, 255, 255, 0.76);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+
+/* ========================================
+    MAIN CONTENT
+    ======================================== */
+.main-content {
+    margin-left: 250px;
+    padding: 30px 20px;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.page-header p {
+    color: #7f8c8d;
+    font-size: 14px;
+}
+
+/* ========================================
+    CARDS
+    ======================================== */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px 8px 0 0;
+    border: none;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* ========================================
+    DASHBOARD STATS
+    ======================================== */
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+}
+
+.stat-card.success {
+    border-left-color: #27ae60;
+}
+
+.stat-card.warning {
+    border-left-color: #f39c12;
+}
+
+.stat-card.danger {
+    border-left-color: #e74c3c;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+/* ========================================
+    TABLES
+    ======================================== */
+.table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table thead {
+    background-color: #f8f9fa;
+}
+
+.table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #2c3e50;
+    padding: 15px;
+}
+
+.table tbody td {
+    padding: 13px 15px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table-sm td {
+    padding: 10px;
+}
+
+/* ========================================
+    BUTTONS
+    ======================================== */
+.btn {
+    border-radius: 5px;
+    font-weight: 500;
+    padding: 9px 18px;
+    transition: all 0.3s;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-success {
+    background-color: #27ae60;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #229954;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+    color: white;
+}
+
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.btn-outline-primary {
+    color: #667eea;
+    border: 1px solid #667eea;
+}
+
+.btn-outline-primary:hover {
+    background-color: #667eea;
+    color: white;
+}
+
+/* ========================================
+    FORMS
+    ======================================== */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.form-control {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px 12px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-control.is-invalid {
+    border-color: #e74c3c;
+}
+
+.invalid-feedback {
+    color: #e74c3c;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    padding-right: 35px;
+}
+
+/* ========================================
+    ALERTS
+    ======================================== */
+.alert {
+    border-radius: 5px;
+    border: none;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background-color: #d5f4e6;
+    color: #27ae60;
+}
+
+.alert-danger {
+    background-color: #fadbd8;
+    color: #e74c3c;
+}
+
+.alert-warning {
+    background-color: #fcf3cf;
+    color: #f39c12;
+}
+
+.alert-info {
+    background-color: #d6eaf8;
+    color: #3498db;
+}
+
+/* ========================================
+    BADGES
+    ======================================== */
+.badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background-color: #d5f4e6;
+    color: #27ae60;
+}
+
+.badge-danger {
+    background-color: #fadbd8;
+    color: #e74c3c;
+}
+
+.badge-warning {
+    background-color: #fcf3cf;
+    color: #f39c12;
+}
+
+.badge-info {
+    background-color: #d6eaf8;
+    color: #3498db;
+}
+
+/* ========================================
+    RESPONSIVE
+    ======================================== */
+@media (max-width: 768px) {
+    body.mobile-nav-open {
+        overflow: hidden;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .topbar,
+    .main-content {
+        margin-left: 0;
+    }
+
+    .topbar {
+        gap: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .mobile-nav-toggle {
+        display: inline-flex;
+    }
+
+    .desktop-title {
+        display: none;
+    }
+
+    .mobile-breadcrumb {
+        display: flex;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .topbar-right {
+        margin-left: auto;
+    }
+
+    .mobile-nav-overlay,
+    .mobile-nav-drawer {
+        display: block;
+    }
+
+    .page-header h1 {
+        font-size: 20px;
+    }
+
+    .stat-card {
+        margin-bottom: 15px;
+    }
+}
+
+/* ========================================
+    UTILITY CLASSES
+    ======================================== */
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.mt-3 {
+    margin-top: 20px;
+}
+
+.mt-2 {
+    margin-top: 15px;
+}
+
+.mb-3 {
+    margin-bottom: 20px;
+}
+
+.mb-2 {
+    margin-bottom: 15px;
+}
+
+.p-3 {
+    padding: 20px;
+}
+
+.p-2 {
+    padding: 15px;
+}
+
+.d-none {
+    display: none;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.gap-2 {
+    gap: 10px;
+}
+
+.gap-3 {
+    gap: 15px;
+}
+
+.font-weight-bold {
+    font-weight: 700;
+}
+
+.text-muted {
+    color: #7f8c8d;
+}
+
+.text-success {
+    color: #27ae60;
+}
+
+.text-danger {
+    color: #e74c3c;
+}
+
+.text-warning {
+    color: #f39c12;
+}
+
+.text-info {
+    color: #3498db;
+}
