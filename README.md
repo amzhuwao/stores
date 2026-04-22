@@ -18,6 +18,7 @@ Core capabilities include:
 - Reporting dashboard and exports
 - Audit log and compliance history
 - Role/permission-based access control
+- Manual and scheduled database backups with restore controls
 
 ## Tech Stack
 
@@ -46,6 +47,7 @@ Implemented and usable:
 - Audit log with CSV export
 - Users management (admin)
 - Settings page (admin)
+- Backup settings (admin): manual backup, restore, and automated scheduling
 
 Partially implemented or pending enhancement:
 
@@ -76,6 +78,17 @@ Demo login:
 - Audit Log: http://localhost/stores/pages/audit/index.php
 - Users Management: http://localhost/stores/pages/users/index.php
 - Settings: http://localhost/stores/pages/settings/index.php
+- Backup Settings: http://localhost/stores/pages/settings/backup.php
+
+## Automated Backup Scheduler
+
+Admins can configure backup schedules in Backup Settings, trigger manual backups on demand, run dry-run validation for restore scripts, restore from stored or uploaded SQL backups, and roll back using linked safety backups.
+
+To run automated backups, schedule this script every 5-15 minutes:
+
+- `php C:\xampp\htdocs\stores\scripts\run_scheduled_backup.php`
+
+Optional HTTP mode is also supported using the generated token shown on the Backup Settings page.
 
 ## Roles and Access
 

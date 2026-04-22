@@ -110,7 +110,7 @@ function hasRole($roleNames) {
 /**
  * Role permission matrix.
  */
-function getRolePermissions() {
+function getDefaultRolePermissions() {
     return [
         'Admin' => ['*'],
         'Storekeeper' => [
@@ -121,7 +121,7 @@ function getRolePermissions() {
         'Manager' => [
             'dashboard.view', 'stores.view', 'stores.create', 'stores.edit', 'departments.view', 'departments.create', 'departments.edit', 'categories.view', 'categories.create', 'categories.edit', 'stock.view', 'grn.view', 'grn.verify',
             'requisition.view', 'requisition.approve', 'requisition.reject',
-            'stock-issues.view', 'adjustments.view', 'adjustments.create', 'adjustments.approve', 'reports.view', 'audit.view'
+            'stock-issues.view', 'adjustments.view', 'adjustments.create', 'adjustments.approve', 'reports.view', 'audit.view', 'settings.view'
         ],
         'Accounts' => ['dashboard.view', 'stores.view', 'departments.view', 'categories.view', 'stock.view', 'adjustments.view', 'reports.view'],
         'Kitchen' => ['dashboard.view', 'stock.view', 'requisition.view', 'requisition.create'],
@@ -129,6 +129,102 @@ function getRolePermissions() {
         'Housekeeping' => ['dashboard.view', 'stock.view', 'requisition.view', 'requisition.create'],
         'Maintenance' => ['dashboard.view', 'stock.view', 'requisition.view', 'requisition.create']
     ];
+}
+
+/**
+ * Ensure role permission override table exists.
+ */
+function ensurePermissionOverrideSchema() {
+    static $bootstrapped = false;
+    if ($bootstrapped) {
+        return;
+    }
+
+    $bootstrapped = true;
+
+    try {
+        $db = Database::getInstance()->getConnection();
+        $db->query("CREATE TABLE IF NOT EXISTS role_permission_overrides (
+            override_id INT PRIMARY KEY AUTO_INCREMENT,
+            role_name VARCHAR(50) NOT NULL,
+            permission VARCHAR(100) NOT NULL,
+            is_allowed TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_role_permission (role_name, permission),
+            INDEX idx_role_name (role_name)
+        )");
+    } catch (Throwable $e) {
+        if (APP_DEBUG) {
+            error_log('Permission schema bootstrap warning: ' . $e->getMessage());
+        }
+    }
+}
+
+/**
+ * Fetch role permission overrides from DB.
+ */
+function getRolePermissionOverrides() {
+    ensurePermissionOverrideSchema();
+
+    $overrides = [];
+
+    try {
+        $db = Database::getInstance()->getConnection();
+        $result = $db->query("SELECT role_name, permission, is_allowed FROM role_permission_overrides");
+        if (!$result) {
+            return $overrides;
+        }
+
+        while ($row = $result->fetch_assoc()) {
+            $role = (string)$row['role_name'];
+            if (!isset($overrides[$role])) {
+                $overrides[$role] = ['allow' => [], 'deny' => []];
+            }
+
+            if ((int)$row['is_allowed'] === 1) {
+                $overrides[$role]['allow'][] = (string)$row['permission'];
+            } else {
+                $overrides[$role]['deny'][] = (string)$row['permission'];
+            }
+        }
+    } catch (Throwable $e) {
+        if (APP_DEBUG) {
+            error_log('Permission override read warning: ' . $e->getMessage());
+        }
+    }
+
+    return $overrides;
+}
+
+/**
+ * Effective role permissions after applying overrides.
+ */
+function getRolePermissions() {
+    $defaults = getDefaultRolePermissions();
+    $overrides = getRolePermissionOverrides();
+
+    foreach (array_keys($overrides) as $roleName) {
+        if (!isset($defaults[$roleName])) {
+            $defaults[$roleName] = [];
+        }
+    }
+
+    foreach ($defaults as $role => $permissions) {
+        $allow = $overrides[$role]['allow'] ?? [];
+        $deny = $overrides[$role]['deny'] ?? [];
+
+        $effective = array_values(array_unique(array_merge($permissions, $allow)));
+        if (!empty($deny)) {
+            $effective = array_values(array_filter($effective, function($perm) use ($deny) {
+                return !in_array($perm, $deny, true);
+            }));
+        }
+
+        $defaults[$role] = $effective;
+    }
+
+    return $defaults;
 }
 
 /**
@@ -141,6 +237,21 @@ function can($permission) {
     }
 
     $role = $user['role_name'] ?? '';
+    $overrides = getRolePermissionOverrides();
+    $denied = $overrides[$role]['deny'] ?? [];
+
+    if (in_array($permission, $denied, true)) {
+        return false;
+    }
+
+    $parts = explode('.', $permission, 2);
+    if (count($parts) === 2) {
+        $moduleWildcard = $parts[0] . '.*';
+        if (in_array($moduleWildcard, $denied, true)) {
+            return false;
+        }
+    }
+
     $matrix = getRolePermissions();
     $granted = $matrix[$role] ?? [];
 
@@ -151,7 +262,6 @@ function can($permission) {
         return true;
     }
 
-    $parts = explode('.', $permission, 2);
     if (count($parts) === 2) {
         $moduleWildcard = $parts[0] . '.*';
         if (in_array($moduleWildcard, $granted, true)) {
@@ -211,7 +321,17 @@ function getRoutePermissionMap() {
         '/pages/users/index.php' => 'users.view',
         '/pages/users/create.php' => 'users.create',
         '/pages/users/edit.php' => 'users.edit',
-        '/pages/settings/index.php' => 'settings.view'
+        '/pages/settings/index.php' => 'settings.view',
+        '/pages/settings/backup.php' => 'settings.backup'
+    ];
+}
+
+/**
+ * Non-route permissions used for privileged actions.
+ */
+function getSupplementalPermissionCatalog() {
+    return [
+        'settings.restore'
     ];
 }
 

@@ -22,6 +22,8 @@ define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: APP_NAME);
 // Environment Configuration
 define('APP_ENV', getenv('APP_ENV') ?: 'development');
 define('APP_DEBUG', APP_ENV !== 'production');
+define('APP_MAX_EXECUTION_TIME', (int)(getenv('APP_MAX_EXECUTION_TIME') ?: (APP_ENV === 'production' ? 120 : 0)));
+define('APP_MEMORY_LIMIT', getenv('APP_MEMORY_LIMIT') ?: (APP_ENV === 'production' ? '512M' : '256M'));
 
 // Session Configuration
 define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
@@ -44,6 +46,19 @@ if (APP_DEBUG) {
     error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
+}
+
+// Runtime limits (best effort; some hosts may override these values)
+if (APP_MAX_EXECUTION_TIME >= 0) {
+    @ini_set('max_execution_time', (string)APP_MAX_EXECUTION_TIME);
+    if (APP_MAX_EXECUTION_TIME > 0) {
+        @set_time_limit(APP_MAX_EXECUTION_TIME);
+    } elseif (APP_MAX_EXECUTION_TIME === 0) {
+        @set_time_limit(0);
+    }
+}
+if (!empty(APP_MEMORY_LIMIT)) {
+    @ini_set('memory_limit', (string)APP_MEMORY_LIMIT);
 }
 
 // Security Headers

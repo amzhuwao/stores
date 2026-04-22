@@ -37,6 +37,59 @@ CREATE TABLE password_reset_tokens (
     INDEX idx_reset_token_expires (expires_at)
 );
 
+CREATE TABLE backup_settings (
+    setting_id TINYINT PRIMARY KEY DEFAULT 1,
+    is_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    frequency ENUM('daily', 'weekly', 'monthly') NOT NULL DEFAULT 'daily',
+    run_time TIME NOT NULL DEFAULT '02:00:00',
+    day_of_week TINYINT NOT NULL DEFAULT 1,
+    day_of_month TINYINT NOT NULL DEFAULT 1,
+    retention_days INT NOT NULL DEFAULT 30,
+    schedule_token VARCHAR(64) NOT NULL,
+    last_run_at DATETIME NULL,
+    next_run_at DATETIME NULL,
+    updated_by INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+CREATE TABLE backup_history (
+    backup_id INT PRIMARY KEY AUTO_INCREMENT,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size_bytes BIGINT NOT NULL DEFAULT 0,
+    trigger_type ENUM('manual', 'scheduled') NOT NULL,
+    status ENUM('success', 'failed') NOT NULL,
+    started_at DATETIME NOT NULL,
+    completed_at DATETIME NULL,
+    initiated_by INT NULL,
+    error_message TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (initiated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_backup_history_started_at (started_at),
+    INDEX idx_backup_history_status (status),
+    INDEX idx_backup_history_trigger (trigger_type)
+);
+
+CREATE TABLE restore_history (
+    restore_id INT PRIMARY KEY AUTO_INCREMENT,
+    source_type ENUM('stored_backup', 'upload') NOT NULL,
+    source_label VARCHAR(255) NOT NULL,
+    source_path VARCHAR(500) NOT NULL,
+    status ENUM('success', 'failed') NOT NULL,
+    started_at DATETIME NOT NULL,
+    completed_at DATETIME NULL,
+    initiated_by INT NULL,
+    safety_backup_id INT NULL,
+    error_message TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (initiated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (safety_backup_id) REFERENCES backup_history(backup_id) ON DELETE SET NULL,
+    INDEX idx_restore_history_started_at (started_at),
+    INDEX idx_restore_history_status (status),
+    INDEX idx_restore_history_source_type (source_type)
+);
+
 -- ====================================
 -- 2. STORES (Kitchen, Bar, Housekeeping, Maintenance)
 -- ====================================

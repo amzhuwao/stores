@@ -44,12 +44,13 @@
 
     $canUsers = can('users.view');
     $canSettings = can('settings.view');
+    $canBackupSettings = can('settings.backup');
 
     $hasInventory = $canProducts || $canStock;
     $hasTransactions = $canGrn || $canRequisition || $canIssues || $canAdjustments;
     $hasConfiguration = $canStores || $canSuppliers || $canDepartments || $canCategories;
     $hasReporting = $canReports || $canAudit;
-    $hasAdmin = $canUsers || $canSettings;
+    $hasAdmin = $canUsers || $canSettings || $canBackupSettings;
     ?>
 
     <!-- Sidebar -->

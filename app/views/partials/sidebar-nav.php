@@ -93,4 +93,9 @@
             <i class="fas fa-cogs"></i> Settings
         </a>
     <?php endif; ?>
+    <?php if (!empty($canBackupSettings)): ?>
+        <a class="nav-link <?php echo (isset($activePage) && $activePage === 'settings-backup') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/settings/backup.php">
+            <i class="fas fa-database"></i> Backups
+        </a>
+    <?php endif; ?>
 <?php endif; ?>
