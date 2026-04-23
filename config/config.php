@@ -11,7 +11,26 @@ define('DB_PASS', '');  // Default XAMPP has no password
 define('DB_NAME', 'stores');
 
 // Site Configuration
-define('SITE_URL', 'http://localhost/stores/');
+// Allow overriding base URL via environment for fixed deployments.
+$siteUrlFromEnv = trim((string)(getenv('SITE_URL') ?: ''));
+
+if ($siteUrlFromEnv !== '') {
+    define('SITE_URL', rtrim($siteUrlFromEnv, '/') . '/');
+} else {
+    // Auto-detect public URL (works for direct access and reverse proxies like ngrok).
+    $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+    $isHttps = (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) ||
+        $forwardedProto === 'https'
+    );
+
+    $scheme = $isHttps ? 'https' : 'http';
+    $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    $host = trim((string)explode(',', (string)$host)[0]);
+
+    define('SITE_URL', $scheme . '://' . $host . '/stores/');
+}
 define('APP_NAME', 'Manica Skyview Stores');
 define('APP_VERSION', '1.0.0');
 
@@ -72,7 +91,12 @@ if (!APP_DEBUG) {
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
-    $secureCookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+    $secureCookie = (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) ||
+        $forwardedProto === 'https'
+    );
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
