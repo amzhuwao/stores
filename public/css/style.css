@@ -4,12 +4,12 @@
    ======================================== */
 
 :root {
-    --primary-color: #667eea;
-    --secondary-color: #764ba2;
-    --danger-color: #e74c3c;
-    --success-color: #27ae60;
-    --warning-color: #f39c12;
-    --info-color: #3498db;
+    --primary-color: #8B0000;
+    --secondary-color: #DAA520;
+    --danger-color: #8B0000;
+    --success-color: #8B0000;
+    --warning-color: #DAA520;
+    --info-color: #DAA520;
     --dark-color: #2c3e50;
     --light-color: #ecf0f1;
 }
@@ -79,8 +79,8 @@ body {
 
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active {
-    background-color: rgba(102, 126, 234, 0.2);
-    border-left-color: #667eea;
+    background-color: rgba(139, 0, 0, 0.2);
+    border-left-color: #8B0000;
     color: white;
 }
 
@@ -145,7 +145,7 @@ body {
 }
 
 .mobile-breadcrumb a {
-    color: #667eea;
+    color: #8B0000;
     text-decoration: none;
 }
 
@@ -254,7 +254,7 @@ body {
     width: 35px;
     height: 35px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #8B0000 0%, #DAA520 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -303,7 +303,7 @@ body {
 }
 
 .card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #8B0000 0%, #DAA520 100%);
     color: white;
     padding: 15px 20px;
     border-radius: 8px 8px 0 0;
@@ -328,19 +328,19 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid #8B0000;
 }
 
 .stat-card.success {
-    border-left-color: #27ae60;
+    border-left-color: #8B0000;
 }
 
 .stat-card.warning {
-    border-left-color: #f39c12;
+    border-left-color: #DAA520;
 }
 
 .stat-card.danger {
-    border-left-color: #e74c3c;
+    border-left-color: #8B0000;
 }
 
 .stat-label {
@@ -402,33 +402,33 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #8B0000 0%, #DAA520 100%);
     color: white;
 }
 
 .btn-primary:hover {
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(139, 0, 0, 0.4);
 }
 
 .btn-success {
-    background-color: #27ae60;
+    background-color: #8B0000;
     color: white;
 }
 
 .btn-success:hover {
-    background-color: #229954;
+    background-color: #6B0000;
     color: white;
 }
 
 .btn-danger {
-    background-color: #e74c3c;
+    background-color: #8B0000;
     color: white;
 }
 
 .btn-danger:hover {
-    background-color: #c0392b;
+    background-color: #6B0000;
     color: white;
 }
 
@@ -438,12 +438,12 @@ body {
 }
 
 .btn-outline-primary {
-    color: #667eea;
-    border: 1px solid #667eea;
+    color: #8B0000;
+    border: 1px solid #8B0000;
 }
 
 .btn-outline-primary:hover {
-    background-color: #667eea;
+    background-color: #8B0000;
     color: white;
 }
 
@@ -469,16 +469,16 @@ body {
 }
 
 .form-control:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #8B0000;
+    box-shadow: 0 0 0 0.2rem rgba(139, 0, 0, 0.25);
 }
 
 .form-control.is-invalid {
-    border-color: #e74c3c;
+    border-color: #8B0000;
 }
 
 .invalid-feedback {
-    color: #e74c3c;
+    color: #8B0000;
     font-size: 13px;
     margin-top: 5px;
 }
@@ -503,23 +503,23 @@ select.form-control {
 }
 
 .alert-success {
-    background-color: #d5f4e6;
-    color: #27ae60;
+    background-color: #ffe6e6;
+    color: #8B0000;
 }
 
 .alert-danger {
-    background-color: #fadbd8;
-    color: #e74c3c;
+    background-color: #ffe6e6;
+    color: #8B0000;
 }
 
 .alert-warning {
-    background-color: #fcf3cf;
-    color: #f39c12;
+    background-color: #fff8dc;
+    color: #DAA520;
 }
 
 .alert-info {
-    background-color: #d6eaf8;
-    color: #3498db;
+    background-color: #fff8dc;
+    color: #DAA520;
 }
 
 /* ========================================
@@ -533,23 +533,23 @@ select.form-control {
 }
 
 .badge-success {
-    background-color: #d5f4e6;
-    color: #27ae60;
+    background-color: #ffe6e6;
+    color: #8B0000;
 }
 
 .badge-danger {
-    background-color: #fadbd8;
-    color: #e74c3c;
+    background-color: #ffe6e6;
+    color: #8B0000;
 }
 
 .badge-warning {
-    background-color: #fcf3cf;
-    color: #f39c12;
+    background-color: #fff8dc;
+    color: #DAA520;
 }
 
 .badge-info {
-    background-color: #d6eaf8;
-    color: #3498db;
+    background-color: #fff8dc;
+    color: #DAA520;
 }
 
 /* ========================================
@@ -675,17 +675,17 @@ select.form-control {
 }
 
 .text-success {
-    color: #27ae60;
+    color: #8B0000;
 }
 
 .text-danger {
-    color: #e74c3c;
+    color: #8B0000;
 }
 
 .text-warning {
-    color: #f39c12;
+    color: #DAA520;
 }
 
 .text-info {
-    color: #3498db;
+    color: #DAA520;
 }
