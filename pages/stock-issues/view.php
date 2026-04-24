@@ -9,7 +9,8 @@ if (!isAuthenticated()) {
 
 $controller = new StockIssueController();
 $issueId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$issue = $controller->getIssueById($issueId);
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+$issue = $controller->getIssueById($issueId, $currentUserId);
 
 if (!$issue) {
     $_SESSION['flash_message'] = 'Stock issue not found.';

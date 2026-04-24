@@ -16,6 +16,23 @@ class RequisitionController extends Controller {
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function getDepartmentForRole($roleName) {
+        $roleName = trim((string)$roleName);
+        if ($roleName === '') {
+            return null;
+        }
+
+        $sql = "SELECT dept_id, dept_name, dept_code
+                FROM departments
+                WHERE status = 'active' AND dept_name = ?
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('s', $roleName);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    }
+
     public function getStores() {
         $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active' ORDER BY store_name ASC";
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
@@ -132,6 +149,11 @@ class RequisitionController extends Controller {
             return ['success' => false, 'message' => 'Access denied'];
         }
 
+        $department = $this->getDepartmentForUser((int)$userId);
+        if (!$department) {
+            return ['success' => false, 'message' => 'Your account is not mapped to a department. Ask an administrator to assign your role to a department first.'];
+        }
+
         $validationError = $this->validateHeader($data);
         if ($validationError) {
             return ['success' => false, 'message' => $validationError];
@@ -147,7 +169,7 @@ class RequisitionController extends Controller {
         try {
             $header = [
                 'requisition_number' => $this->requisitionModel->generateRequisitionNumber(),
-                'department_id' => (int)$data['department_id'],
+                'department_id' => (int)$department['dept_id'],
                 'store_id' => (int)$data['store_id'],
                 'requested_by' => (int)$userId,
                 'status' => 'pending',
@@ -237,13 +259,25 @@ class RequisitionController extends Controller {
     }
 
     private function validateHeader($data) {
-        if (empty($data['department_id']) || !ctype_digit((string)$data['department_id'])) {
-            return 'Please select a department';
-        }
         if (empty($data['store_id']) || !ctype_digit((string)$data['store_id'])) {
             return 'Please select a store';
         }
         return null;
+    }
+
+    private function getDepartmentForUser($userId) {
+        $sql = "SELECT d.dept_id, d.dept_name, d.dept_code
+                FROM users u
+                JOIN roles r ON u.role_id = r.role_id
+                JOIN departments d ON d.dept_name = r.role_name AND d.status = 'active'
+                WHERE u.user_id = ?
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+
+        return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
     private function normalizeItems($items) {

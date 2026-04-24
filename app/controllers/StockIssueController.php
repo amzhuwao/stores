@@ -4,7 +4,7 @@
  */
 
 class StockIssueController extends Controller {
-    public function getIssues($filters = []) {
+    public function getIssues($filters = [], $userId = null) {
         $sql = "SELECT si.*, d.dept_name, s.store_name, u.full_name AS issued_by_name,
                     rr.requisition_number
                 FROM stock_issues si
@@ -16,6 +16,21 @@ class StockIssueController extends Controller {
 
         $types = '';
         $params = [];
+
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return [];
+        }
+        if (!empty($scope['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['department_id'];
+        }
+        if (!empty($scope['store_id'])) {
+            $sql .= " AND si.store_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['store_id'];
+        }
 
         if (!empty($filters['q'])) {
             $sql .= " AND (si.issue_number LIKE ? OR d.dept_name LIKE ? OR s.store_name LIKE ?)";
@@ -57,14 +72,44 @@ class StockIssueController extends Controller {
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getStats() {
+    public function getStats($userId = null) {
         $stats = [
             'issued' => 0,
             'received' => 0,
             'cancelled' => 0
         ];
 
-        $result = $this->db->query("SELECT status, COUNT(*) AS c FROM stock_issues GROUP BY status");
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return $stats;
+        }
+
+        $sql = "SELECT status, COUNT(*) AS c FROM stock_issues WHERE 1 = 1";
+        $types = '';
+        $params = [];
+
+        if (!empty($scope['department_id'])) {
+            $sql .= " AND department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['department_id'];
+        }
+        if (!empty($scope['store_id'])) {
+            $sql .= " AND store_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['store_id'];
+        }
+
+        $sql .= " GROUP BY status";
+
+        if ($types !== '') {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
+        } else {
+            $result = $this->db->query($sql);
+        }
+
         while ($row = $result->fetch_assoc()) {
             if (array_key_exists($row['status'], $stats)) {
                 $stats[$row['status']] = (int)$row['c'];
@@ -74,13 +119,33 @@ class StockIssueController extends Controller {
         return $stats;
     }
 
-    public function getStores() {
-        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active' ORDER BY store_name ASC";
+    public function getStores($userId = null) {
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return [];
+        }
+
+        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active'";
+        if (!empty($scope['store_id'])) {
+            $sql .= " AND store_id = " . (int)$scope['store_id'];
+        }
+        $sql .= " ORDER BY store_name ASC";
+
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getDepartments() {
-        $sql = "SELECT dept_id, dept_name FROM departments WHERE status = 'active' ORDER BY dept_name ASC";
+    public function getDepartments($userId = null) {
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return [];
+        }
+
+        $sql = "SELECT dept_id, dept_name FROM departments WHERE status = 'active'";
+        if (!empty($scope['department_id'])) {
+            $sql .= " AND dept_id = " . (int)$scope['department_id'];
+        }
+        $sql .= " ORDER BY dept_name ASC";
+
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
@@ -134,7 +199,30 @@ class StockIssueController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getIssueById($issueId) {
+    public function getStoreProductsForDirectIssue($storeId) {
+        $sql = "SELECT p.product_id, p.product_name, p.product_code, p.unit_of_measure,
+                    st.quantity_on_hand AS available_stock,
+                    COALESCE((
+                        SELECT gi.unit_price
+                        FROM grn_items gi
+                        WHERE gi.product_id = p.product_id
+                        ORDER BY gi.grn_item_id DESC
+                        LIMIT 1
+                    ), 0) AS unit_price
+                FROM stock st
+                JOIN products p ON p.product_id = st.product_id
+                WHERE st.store_id = ?
+                  AND p.status = 'active'
+                  AND st.quantity_on_hand > 0
+                ORDER BY p.product_name ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $storeId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getIssueById($issueId, $userId = null) {
         $sql = "SELECT si.*, d.dept_name, s.store_name, u.full_name AS issued_by_name,
                     ur.full_name AS received_by_name, r.requisition_number
                 FROM stock_issues si
@@ -144,6 +232,18 @@ class StockIssueController extends Controller {
                 LEFT JOIN users ur ON si.received_by = ur.user_id
                 LEFT JOIN requisitions r ON si.requisition_id = r.requisition_id
                 WHERE si.issue_id = ?";
+
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return null;
+        }
+        if (!empty($scope['department_id'])) {
+            $sql .= " AND si.department_id = " . (int)$scope['department_id'];
+        }
+        if (!empty($scope['store_id'])) {
+            $sql .= " AND si.store_id = " . (int)$scope['store_id'];
+        }
+
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $issueId);
         $stmt->execute();
@@ -226,6 +326,8 @@ class StockIssueController extends Controller {
             $headerStmt->execute();
             $issueId = $this->db->insert_id;
 
+            $destinationStoreId = $this->getDepartmentStoreId((int)$requisition['department_id']);
+
             foreach ($normalized as $row) {
                 $reqItemId = (int)$row['req_item_id'];
                 $line = $lineMap[$reqItemId];
@@ -273,6 +375,31 @@ class StockIssueController extends Controller {
                     $issuedBy
                 );
                 $txnStmt->execute();
+
+                if ($destinationStoreId > 0 && $destinationStoreId !== (int)$requisition['store_id']) {
+                    $this->increaseStoreStock($productId, $destinationStoreId, $qty);
+
+                    $receiptType = 'receipt';
+                    $receiptReferenceType = 'ISSUE_RECEIPT';
+                    $receiptSql = "INSERT INTO stock_transactions (product_id, store_id, transaction_type, reference_type, reference_id, quantity_change, unit_price, total_value, performed_by)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $receiptStmt = $this->db->prepare($receiptSql);
+                    $receiptQty = (int)$qty;
+                    $receiptTotal = (float)$qty * (float)$unitPrice;
+                    $receiptStmt->bind_param(
+                        'iissiiddi',
+                        $productId,
+                        $destinationStoreId,
+                        $receiptType,
+                        $receiptReferenceType,
+                        $issueId,
+                        $receiptQty,
+                        $unitPrice,
+                        $receiptTotal,
+                        $issuedBy
+                    );
+                    $receiptStmt->execute();
+                }
             }
 
             $reqStatusSql = "UPDATE requisitions SET status = 'issued', updated_at = NOW() WHERE requisition_id = ?";
@@ -283,6 +410,136 @@ class StockIssueController extends Controller {
             $this->logAudit('Create', 'stock_issue', $issueId, '', json_encode([
                 'issue_number' => $issueNumber,
                 'requisition_id' => $requisitionId,
+                'line_count' => count($normalized)
+            ]));
+
+            $this->db->commit();
+            return ['success' => true, 'message' => 'Stock issued successfully', 'issue_id' => $issueId];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => 'Failed to issue stock: ' . $e->getMessage()];
+        }
+    }
+
+    public function createDirectIssue($storeId, $departmentId, $items, $notes, $issuedBy) {
+        if (!can('stock-issues.create')) {
+            return ['success' => false, 'message' => 'Access denied'];
+        }
+
+        $store = $this->getActiveStoreById((int)$storeId);
+        if (!$store) {
+            return ['success' => false, 'message' => 'Invalid or inactive store selected'];
+        }
+
+        $department = $this->getActiveDepartmentById((int)$departmentId);
+        if (!$department) {
+            return ['success' => false, 'message' => 'Invalid or inactive department selected'];
+        }
+
+        $normalized = $this->normalizeDirectIssueItems($items);
+        if (empty($normalized)) {
+            return ['success' => false, 'message' => 'Enter at least one issue quantity'];
+        }
+
+        $stockMap = [];
+        foreach ($this->getStoreProductsForDirectIssue((int)$storeId) as $line) {
+            $stockMap[(int)$line['product_id']] = $line;
+        }
+
+        foreach ($normalized as $row) {
+            $productId = (int)$row['product_id'];
+            if (!isset($stockMap[$productId])) {
+                return ['success' => false, 'message' => 'Invalid product selected for this store'];
+            }
+
+            if ((int)$row['quantity_issued'] > (int)$stockMap[$productId]['available_stock']) {
+                return ['success' => false, 'message' => 'Insufficient stock for one or more items'];
+            }
+        }
+
+        $this->db->begin_transaction();
+
+        try {
+            $issueNumber = $this->generateIssueNumber();
+            $headerSql = "INSERT INTO stock_issues (issue_number, requisition_id, store_id, department_id, issued_by, notes, status)
+                          VALUES (?, NULL, ?, ?, ?, ?, 'issued')";
+            $headerStmt = $this->db->prepare($headerSql);
+            $headerStmt->bind_param('siiis', $issueNumber, $storeId, $departmentId, $issuedBy, $notes);
+            $headerStmt->execute();
+            $issueId = $this->db->insert_id;
+
+            $destinationStoreId = $this->getDepartmentStoreId((int)$departmentId);
+
+            foreach ($normalized as $row) {
+                $productId = (int)$row['product_id'];
+                $qty = (int)$row['quantity_issued'];
+                $unitPrice = isset($stockMap[$productId]['unit_price']) ? (float)$stockMap[$productId]['unit_price'] : 0.0;
+                $remarks = trim($row['remarks'] ?? '');
+
+                $itemSql = "INSERT INTO stock_issue_items (issue_id, product_id, quantity_issued, unit_price, remarks)
+                            VALUES (?, ?, ?, ?, ?)";
+                $itemStmt = $this->db->prepare($itemSql);
+                $itemStmt->bind_param('iiids', $issueId, $productId, $qty, $unitPrice, $remarks);
+                $itemStmt->execute();
+
+                $stockSql = "UPDATE stock SET quantity_on_hand = quantity_on_hand - ?, updated_at = NOW()
+                             WHERE product_id = ? AND store_id = ?";
+                $stockStmt = $this->db->prepare($stockSql);
+                $stockStmt->bind_param('iii', $qty, $productId, $storeId);
+                $stockStmt->execute();
+
+                $txnType = 'issue';
+                $referenceType = 'DIRECT_ISSUE';
+                $txnSql = "INSERT INTO stock_transactions (product_id, store_id, transaction_type, reference_type, reference_id, quantity_change, unit_price, total_value, performed_by)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $txnStmt = $this->db->prepare($txnSql);
+                $negativeQty = -1 * $qty;
+                $totalValue = (float)$qty * (float)$unitPrice;
+                $txnStmt->bind_param(
+                    'iissiiddi',
+                    $productId,
+                    $storeId,
+                    $txnType,
+                    $referenceType,
+                    $issueId,
+                    $negativeQty,
+                    $unitPrice,
+                    $totalValue,
+                    $issuedBy
+                );
+                $txnStmt->execute();
+
+                if ($destinationStoreId > 0 && $destinationStoreId !== (int)$storeId) {
+                    $this->increaseStoreStock($productId, $destinationStoreId, $qty);
+
+                    $receiptType = 'receipt';
+                    $receiptReferenceType = 'DIRECT_ISSUE_RECEIPT';
+                    $receiptSql = "INSERT INTO stock_transactions (product_id, store_id, transaction_type, reference_type, reference_id, quantity_change, unit_price, total_value, performed_by)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $receiptStmt = $this->db->prepare($receiptSql);
+                    $receiptQty = (int)$qty;
+                    $receiptTotal = (float)$qty * (float)$unitPrice;
+                    $receiptStmt->bind_param(
+                        'iissiiddi',
+                        $productId,
+                        $destinationStoreId,
+                        $receiptType,
+                        $receiptReferenceType,
+                        $issueId,
+                        $receiptQty,
+                        $unitPrice,
+                        $receiptTotal,
+                        $issuedBy
+                    );
+                    $receiptStmt->execute();
+                }
+            }
+
+            $this->logAudit('Create', 'stock_issue', $issueId, '', json_encode([
+                'issue_number' => $issueNumber,
+                'direct_issue' => true,
+                'store_id' => (int)$storeId,
+                'department_id' => (int)$departmentId,
                 'line_count' => count($normalized)
             ]));
 
@@ -330,5 +587,158 @@ class StockIssueController extends Controller {
         }
 
         return $rows;
+    }
+
+    private function normalizeDirectIssueItems($items) {
+        $productIds = $items['product_id'] ?? [];
+        $quantities = $items['quantity_issued'] ?? [];
+        $remarks = $items['remarks'] ?? [];
+
+        $rows = [];
+        $count = count($productIds);
+        for ($i = 0; $i < $count; $i++) {
+            $productId = $productIds[$i] ?? '';
+            $qty = $quantities[$i] ?? '';
+
+            if (!ctype_digit((string)$productId)) {
+                continue;
+            }
+            if (!is_numeric($qty) || (int)$qty <= 0) {
+                continue;
+            }
+
+            $rows[] = [
+                'product_id' => (int)$productId,
+                'quantity_issued' => (int)$qty,
+                'remarks' => trim($remarks[$i] ?? '')
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function getActiveStoreById($storeId) {
+        $sql = "SELECT store_id, store_name FROM stores WHERE store_id = ? AND status = 'active' LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $storeId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
+    private function getActiveDepartmentById($departmentId) {
+        $sql = "SELECT dept_id, dept_name FROM departments WHERE dept_id = ? AND status = 'active' LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $departmentId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
+    private function getDepartmentStoreId($departmentId) {
+        $sql = "SELECT s.store_id
+                FROM departments d
+                JOIN stores s ON s.status = 'active'
+                    AND (
+                        s.store_code = CONCAT(d.dept_code, '001')
+                        OR s.store_code LIKE CONCAT(d.dept_code, '%')
+                        OR s.store_name LIKE CONCAT(d.dept_name, '%')
+                    )
+                WHERE d.dept_id = ?
+                ORDER BY (s.store_code = CONCAT(d.dept_code, '001')) DESC, s.store_id ASC
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $departmentId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        return $row ? (int)$row['store_id'] : 0;
+    }
+
+    private function increaseStoreStock($productId, $storeId, $qty) {
+        $updateSql = "UPDATE stock
+                      SET quantity_on_hand = quantity_on_hand + ?, updated_at = NOW()
+                      WHERE product_id = ? AND store_id = ?";
+        $updateStmt = $this->db->prepare($updateSql);
+        $updateStmt->bind_param('iii', $qty, $productId, $storeId);
+        $updateStmt->execute();
+
+        if ($updateStmt->affected_rows > 0) {
+            return;
+        }
+
+        $reorderLevel = 0;
+        $reorderSql = "SELECT reorder_level FROM products WHERE product_id = ? LIMIT 1";
+        $reorderStmt = $this->db->prepare($reorderSql);
+        $reorderStmt->bind_param('i', $productId);
+        $reorderStmt->execute();
+        $reorderRow = $reorderStmt->get_result()->fetch_assoc();
+        if ($reorderRow) {
+            $reorderLevel = (int)$reorderRow['reorder_level'];
+        }
+
+        $insertSql = "INSERT INTO stock (product_id, store_id, quantity_on_hand, reorder_level)
+                      VALUES (?, ?, ?, ?)";
+        $insertStmt = $this->db->prepare($insertSql);
+        $insertStmt->bind_param('iiii', $productId, $storeId, $qty, $reorderLevel);
+        $insertStmt->execute();
+    }
+
+    private function getIssueVisibilityScope($userId) {
+        $scope = [
+            'department_id' => null,
+            'store_id' => null,
+            'deny_all' => false
+        ];
+
+        if (empty($userId) || !ctype_digit((string)$userId)) {
+            return $scope;
+        }
+
+        $sql = "SELECT r.role_name,
+                       d.dept_id,
+                       d.dept_code,
+                       s.store_id
+                FROM users u
+                JOIN roles r ON r.role_id = u.role_id
+                LEFT JOIN departments d ON d.status = 'active' AND d.dept_name = r.role_name
+                LEFT JOIN stores s ON s.status = 'active'
+                    AND d.dept_code IS NOT NULL
+                    AND (
+                        s.store_code = CONCAT(d.dept_code, '001')
+                        OR s.store_code LIKE CONCAT(d.dept_code, '%')
+                        OR s.store_name LIKE CONCAT(d.dept_name, '%')
+                    )
+                WHERE u.user_id = ?
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if (!$row) {
+            $scope['deny_all'] = true;
+            return $scope;
+        }
+
+        $roleName = (string)($row['role_name'] ?? '');
+        if (in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true)) {
+            return $scope;
+        }
+
+        $deptId = isset($row['dept_id']) ? (int)$row['dept_id'] : 0;
+        $storeId = isset($row['store_id']) ? (int)$row['store_id'] : 0;
+
+        if ($deptId <= 0) {
+            $scope['deny_all'] = true;
+            return $scope;
+        }
+
+        $scope['department_id'] = $deptId;
+        if ($storeId > 0) {
+            $scope['store_id'] = $storeId;
+        }
+
+        return $scope;
     }
 }

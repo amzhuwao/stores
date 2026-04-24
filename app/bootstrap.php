@@ -121,7 +121,7 @@ function getDefaultRolePermissions() {
         'Manager' => [
             'dashboard.view', 'stores.view', 'stores.create', 'stores.edit', 'departments.view', 'departments.create', 'departments.edit', 'categories.view', 'categories.create', 'categories.edit', 'stock.view', 'grn.view', 'grn.verify',
             'requisition.view', 'requisition.approve', 'requisition.reject',
-            'stock-issues.view', 'adjustments.view', 'adjustments.create', 'adjustments.approve', 'reports.view', 'audit.view', 'settings.view'
+            'stock-issues.view', 'stock-issues.create', 'adjustments.view', 'adjustments.create', 'adjustments.approve', 'reports.view', 'audit.view', 'settings.view'
         ],
         'Accounts' => ['dashboard.view', 'stores.view', 'departments.view', 'categories.view', 'stock.view', 'adjustments.view', 'reports.view'],
         'Kitchen' => ['dashboard.view', 'stock.view', 'requisition.view', 'requisition.create'],

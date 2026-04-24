@@ -16,10 +16,11 @@ $filters = [
     'status' => $_GET['status'] ?? 'all'
 ];
 
-$issues = $controller->getIssues($filters);
-$stores = $controller->getStores();
-$departments = $controller->getDepartments();
-$stats = $controller->getStats();
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+$issues = $controller->getIssues($filters, $currentUserId);
+$stores = $controller->getStores($currentUserId);
+$departments = $controller->getDepartments($currentUserId);
+$stats = $controller->getStats($currentUserId);
 
 $pageTitle = 'Stock Issues';
 $activePage = 'issues';
