@@ -1,19 +1,30 @@
-const CACHE_VERSION = 'stores-pwa-v1';
+const CACHE_VERSION = 'stores-pwa-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
-const OFFLINE_URL = '/stores/public/offline.html';
+const APP_BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const OFFLINE_URL = `${APP_BASE_PATH}/public/offline.html`;
 
 const STATIC_ASSETS = [
-  '/stores/',
-  '/stores/dashboard.php',
-  '/stores/login.php',
-  '/stores/public/manifest.json',
-  '/stores/public/offline.html',
-  '/stores/public/css/style.css',
-  '/stores/public/js/main.js',
-  '/stores/public/js/pwa.js',
-  '/stores/public/img/pwa-icon-192.svg',
-  '/stores/public/img/pwa-icon-512.svg'
+  `${APP_BASE_PATH}/`,
+  `${APP_BASE_PATH}/dashboard.php`,
+  `${APP_BASE_PATH}/login.php`,
+  `${APP_BASE_PATH}/pages/forgot-password.php`,
+  `${APP_BASE_PATH}/pages/reset-password.php`,
+  `${APP_BASE_PATH}/pages/reports/index.php`,
+  `${APP_BASE_PATH}/pages/requisition/index.php`,
+  `${APP_BASE_PATH}/pages/stock-issues/index.php`,
+  `${APP_BASE_PATH}/pages/grn/index.php`,
+  `${APP_BASE_PATH}/pages/adjustments/index.php`,
+  `${APP_BASE_PATH}/pages/stock/view.php`,
+  `${APP_BASE_PATH}/pages/profile.php`,
+  `${APP_BASE_PATH}/pages/change-password.php`,
+  `${APP_BASE_PATH}/public/manifest.php`,
+  `${APP_BASE_PATH}/public/offline.html`,
+  `${APP_BASE_PATH}/public/css/style.css`,
+  `${APP_BASE_PATH}/public/js/main.js`,
+  `${APP_BASE_PATH}/public/js/pwa.js`,
+  `${APP_BASE_PATH}/public/img/pwa-icon-192.svg`,
+  `${APP_BASE_PATH}/public/img/pwa-icon-512.svg`
 ];
 
 self.addEventListener('install', event => {
@@ -45,7 +56,7 @@ self.addEventListener('fetch', event => {
 
   if (isNavigation) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-store' })
         .then(response => {
           const responseClone = response.clone();
           caches.open(RUNTIME_CACHE).then(cache => cache.put(event.request, responseClone));
@@ -71,7 +82,7 @@ self.addEventListener('fetch', event => {
           return cachedResponse;
         }
 
-        return fetch(event.request).then(networkResponse => {
+        return fetch(event.request, { cache: 'no-store' }).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(RUNTIME_CACHE).then(cache => cache.put(event.request, responseClone));
@@ -85,7 +96,7 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    fetch(event.request).then(networkResponse => {
+    fetch(event.request, { cache: 'no-store' }).then(networkResponse => {
       if (networkResponse && networkResponse.status === 200) {
         const responseClone = networkResponse.clone();
         caches.open(RUNTIME_CACHE).then(cache => cache.put(event.request, responseClone));

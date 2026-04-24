@@ -6,7 +6,7 @@
     const baseUrl = window.APP_BASE_URL || '/stores/';
     const swUrl = baseUrl.replace(/\/?$/, '/') + 'sw.js';
 
-    window.addEventListener('load', function () {
+    window.addEventListener('DOMContentLoaded', function () {
         navigator.serviceWorker.register(swUrl).catch(function (error) {
             console.warn('Service worker registration failed:', error);
         });

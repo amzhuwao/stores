@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="<?php echo htmlspecialchars(APP_NAME); ?>">
-    <link rel="manifest" href="<?php echo SITE_URL; ?>public/manifest.json">
+    <link rel="manifest" href="<?php echo SITE_URL; ?>public/manifest.php">
     <link rel="icon" href="<?php echo SITE_URL; ?>public/img/pwa-icon-192.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="<?php echo SITE_URL; ?>public/img/pwa-icon-192.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
