@@ -270,14 +270,14 @@ include __DIR__ . '/../../app/views/layout-header.php';
 
                                             <?php if (count($changes) > 3): ?>
                                                 <details>
-                                                    <summary style="cursor:pointer;font-size:12px;color:#8B0000;">Show <?php echo count($changes) - 3; ?> more changes</summary>
+                                                    <summary style="cursor:pointer;font-size:12px;color:#667eea;">Show <?php echo count($changes) - 3; ?> more changes</summary>
                                                     <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">
                                                         <?php foreach (array_slice($changes, 3) as $change): ?>
                                                             <div style="font-size:12px;line-height:1.35;">
                                                                 <strong><?php echo htmlspecialchars($change['field']); ?>:</strong>
-                                                                <span style="color:#8B0000;"><?php echo htmlspecialchars($change['old']); ?></span>
+                                                                <span style="color:#c0392b;"><?php echo htmlspecialchars($change['old']); ?></span>
                                                                 <span style="padding:0 6px;color:#7f8c8d;">-></span>
-                                                                <span style="color:#DAA520;"><?php echo htmlspecialchars($change['new']); ?></span>
+                                                                <span style="color:#1e8449;"><?php echo htmlspecialchars($change['new']); ?></span>
                                                             </div>
                                                         <?php endforeach; ?>
                                                     </div>
@@ -286,7 +286,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
                                         </div>
                                     <?php else: ?>
                                         <details>
-                                            <summary style="cursor:pointer;font-size:12px;color:#8B0000;">View entry details</summary>
+                                            <summary style="cursor:pointer;font-size:12px;color:#667eea;">View entry details</summary>
                                             <div style="margin-top:6px;font-size:12px;line-height:1.4;">
                                                 <div><strong>Old:</strong> <?php echo htmlspecialchars(auditToFlatString($log['old_value'] ?? '')); ?></div>
                                                 <div><strong>New:</strong> <?php echo htmlspecialchars(auditToFlatString($log['new_value'] ?? '')); ?></div>

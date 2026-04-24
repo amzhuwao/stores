@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #8B0000 0%, #DAA520 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
         .login-box {
             width: 100%;
