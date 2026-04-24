@@ -4,12 +4,26 @@
  */
 
 class ReportController extends Controller {
-    public function getStores() {
-        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active' ORDER BY store_name ASC";
+    public function getStores($userId = null) {
+        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active'";
+        $params = [];
+        $types = '';
+
+        $scope = $this->getReportVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return [];
+        }
+
+        if (!empty($scope['store_ids'])) {
+            $storeIds = array_map('intval', $scope['store_ids']);
+            $sql .= " AND store_id IN (" . implode(',', $storeIds) . ")";
+        }
+
+        $sql .= " ORDER BY store_name ASC";
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getSummary($dateFrom, $dateTo, $storeId = null) {
+    public function getSummary($dateFrom, $dateTo, $storeId = null, $userId = null) {
         $summary = [
             'receipts_qty' => 0,
             'issues_qty' => 0,
@@ -18,6 +32,8 @@ class ReportController extends Controller {
             'active_products' => 0,
             'low_stock_lines' => 0
         ];
+
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
 
         $filterSql = " WHERE DATE(st.transaction_date) BETWEEN ? AND ?";
         $types = 'ss';
@@ -46,7 +62,15 @@ class ReportController extends Controller {
         $summary['receipts_value'] = (float)$row['receipts_value'];
         $summary['issues_value'] = (float)$row['issues_value'];
 
-        $summary['active_products'] = (int)$this->db->query("SELECT COUNT(*) AS c FROM products WHERE status = 'active'")->fetch_assoc()['c'];
+        if ($storeId) {
+            $activeProductsSql = "SELECT COUNT(DISTINCT p.product_id) AS c
+                                  FROM products p
+                                  JOIN stock s ON s.product_id = p.product_id
+                                  WHERE p.status = 'active' AND s.store_id = " . (int)$storeId;
+        } else {
+            $activeProductsSql = "SELECT COUNT(*) AS c FROM products WHERE status = 'active'";
+        }
+        $summary['active_products'] = (int)$this->db->query($activeProductsSql)->fetch_assoc()['c'];
 
         $lowStockSql = "SELECT COUNT(*) AS c
                         FROM stock s
@@ -62,13 +86,15 @@ class ReportController extends Controller {
         return $summary;
     }
 
-    public function getFinancialKpis($dateFrom, $dateTo, $storeId = null) {
+    public function getFinancialKpis($dateFrom, $dateTo, $storeId = null, $userId = null) {
         $kpis = [
             'stock_valuation' => 0.0,
             'cogi' => 0.0,
             'purchase_total' => 0.0,
             'variance_value' => 0.0
         ];
+
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
 
         $valuationSql = "SELECT
                 COALESCE(SUM(
@@ -130,7 +156,8 @@ class ReportController extends Controller {
         return $kpis;
     }
 
-    public function getStockValuationReport($storeId = null) {
+    public function getStockValuationReport($storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     s.store_id,
                     st.store_name,
@@ -157,7 +184,8 @@ class ReportController extends Controller {
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getDepartmentConsumptionReport($dateFrom, $dateTo, $storeId = null) {
+    public function getDepartmentConsumptionReport($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     d.dept_id,
                     d.dept_name,
@@ -187,8 +215,9 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getBudgetVsSpendReport($dateFrom, $dateTo, $period = 'monthly', $storeId = null) {
+    public function getBudgetVsSpendReport($dateFrom, $dateTo, $period = 'monthly', $storeId = null, $userId = null) {
         $budgetColumn = $period === 'weekly' ? 'weekly_budget' : 'monthly_budget';
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
 
         $sql = "SELECT
                     d.dept_id,
@@ -231,7 +260,8 @@ class ReportController extends Controller {
         return $rows;
     }
 
-    public function getMonthlyPurchaseReport($dateFrom, $dateTo, $storeId = null) {
+    public function getMonthlyPurchaseReport($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     DATE_FORMAT(g.receipt_date, '%Y-%m') AS period_month,
                     sup.supplier_name,
@@ -263,7 +293,8 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getSupplierPerformanceReport($dateFrom, $dateTo, $storeId = null) {
+    public function getSupplierPerformanceReport($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     sup.supplier_name,
                     COUNT(DISTINCT g.grn_id) AS deliveries,
@@ -295,7 +326,8 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getVarianceReport($dateFrom, $dateTo, $storeId = null) {
+    public function getVarianceReport($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     sa.adjustment_number,
                     sa.adjustment_date,
@@ -330,7 +362,8 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getProfitImpactAnalysis($dateFrom, $dateTo, $storeId = null) {
+    public function getProfitImpactAnalysis($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     COALESCE(SUM(psu.revenue), 0) AS revenue,
                     COALESCE(SUM(psu.cogs), 0) AS cogs,
@@ -355,7 +388,8 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_assoc();
     }
 
-    public function getStockMovement($dateFrom, $dateTo, $storeId = null) {
+    public function getStockMovement($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     DATE(st.transaction_date) AS movement_date,
                     st.transaction_type,
@@ -382,7 +416,8 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getLowStockItems($storeId = null) {
+    public function getLowStockItems($storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     s.stock_id,
                     st.store_name,
@@ -418,7 +453,8 @@ class ReportController extends Controller {
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getTopConsumedItems($dateFrom, $dateTo, $storeId = null) {
+    public function getTopConsumedItems($dateFrom, $dateTo, $storeId = null, $userId = null) {
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
         $sql = "SELECT
                     p.product_name,
                     p.product_code,
@@ -450,8 +486,9 @@ class ReportController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getMonthlyTrend($months = 6, $storeId = null) {
+    public function getMonthlyTrend($months = 6, $storeId = null, $userId = null) {
         $months = max(1, min(24, (int)$months));
+        $storeId = $this->resolveReportStoreId($userId, $storeId);
 
         $sql = "SELECT
                     DATE_FORMAT(tx.transaction_date, '%Y-%m') AS month_key,
@@ -476,5 +513,76 @@ class ReportController extends Controller {
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    private function resolveReportStoreId($userId, $storeId = null) {
+        $scope = $this->getReportVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return null;
+        }
+
+        if (empty($scope['store_ids'])) {
+            return $storeId;
+        }
+
+        $allowedStoreIds = array_map('intval', $scope['store_ids']);
+        if ($storeId !== null && in_array((int)$storeId, $allowedStoreIds, true)) {
+            return (int)$storeId;
+        }
+
+        return count($allowedStoreIds) === 1 ? $allowedStoreIds[0] : null;
+    }
+
+    private function getReportVisibilityScope($userId) {
+        $scope = [
+            'store_ids' => [],
+            'deny_all' => false
+        ];
+
+        if (empty($userId) || !ctype_digit((string)$userId)) {
+            return $scope;
+        }
+
+        $sql = "SELECT r.role_name,
+                       d.dept_id,
+                       d.dept_code,
+                       s.store_id
+                FROM users u
+                JOIN roles r ON r.role_id = u.role_id
+                LEFT JOIN departments d ON d.status = 'active' AND d.dept_name = r.role_name
+                LEFT JOIN stores s ON s.status = 'active'
+                    AND d.dept_code IS NOT NULL
+                    AND (
+                        s.store_code = CONCAT(d.dept_code, '001')
+                        OR s.store_code LIKE CONCAT(d.dept_code, '%')
+                        OR s.store_name LIKE CONCAT(d.dept_name, '%')
+                    )
+                WHERE u.user_id = ?
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if (!$row) {
+            $scope['deny_all'] = true;
+            return $scope;
+        }
+
+        $roleName = (string)($row['role_name'] ?? '');
+        if (in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true)) {
+            return $scope;
+        }
+
+        if (!empty($row['store_id'])) {
+            $scope['store_ids'][] = (int)$row['store_id'];
+        }
+
+        if (empty($scope['store_ids'])) {
+            $scope['deny_all'] = true;
+        }
+
+        return $scope;
     }
 }

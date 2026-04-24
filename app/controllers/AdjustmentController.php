@@ -4,8 +4,18 @@
  */
 
 class AdjustmentController extends Controller {
-    public function getStores() {
-        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active' ORDER BY store_name ASC";
+    public function getStores($userId = null) {
+        $storeIds = $this->getVisibleStoreIds($userId);
+        if ($storeIds === []) {
+            return [];
+        }
+
+        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active'";
+        if (is_array($storeIds) && !empty($storeIds)) {
+            $sql .= " AND store_id IN (" . implode(',', array_map('intval', $storeIds)) . ")";
+        }
+        $sql .= " ORDER BY store_name ASC";
+
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
@@ -41,7 +51,7 @@ class AdjustmentController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getAdjustments($filters = []) {
+    public function getAdjustments($filters = [], $userId = null) {
         $sql = "
             SELECT
                 sa.adjustment_id,
@@ -65,6 +75,14 @@ class AdjustmentController extends Controller {
 
         $types = '';
         $params = [];
+        $storeIds = $this->getVisibleStoreIds($userId);
+        if ($storeIds === []) {
+            return [];
+        }
+
+        if (is_array($storeIds) && !empty($storeIds)) {
+            $sql .= " AND sa.store_id IN (" . implode(',', array_map('intval', $storeIds)) . ")";
+        }
 
         if (in_array($filters['status'] ?? 'all', ['pending', 'approved', 'rejected'], true)) {
             $sql .= " AND sa.status = ?";
@@ -94,7 +112,7 @@ class AdjustmentController extends Controller {
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getStats() {
+    public function getStats($userId = null) {
         $stats = [
             'total' => 0,
             'pending' => 0,
@@ -102,11 +120,21 @@ class AdjustmentController extends Controller {
             'rejected' => 0
         ];
 
+        $storeIds = $this->getVisibleStoreIds($userId);
+        if ($storeIds === []) {
+            return $stats;
+        }
+
+        $storeFilter = '';
+        if (is_array($storeIds) && !empty($storeIds)) {
+            $storeFilter = ' WHERE store_id IN (' . implode(',', array_map('intval', $storeIds)) . ')';
+        }
+
         $statsQueries = [
-            'total' => "SELECT COUNT(*) AS c FROM stock_adjustments",
-            'pending' => "SELECT COUNT(*) AS c FROM stock_adjustments WHERE status = 'pending'",
-            'approved' => "SELECT COUNT(*) AS c FROM stock_adjustments WHERE status = 'approved'",
-            'rejected' => "SELECT COUNT(*) AS c FROM stock_adjustments WHERE status = 'rejected'"
+            'total' => "SELECT COUNT(*) AS c FROM stock_adjustments" . $storeFilter,
+            'pending' => "SELECT COUNT(*) AS c FROM stock_adjustments" . $storeFilter . (strpos($storeFilter, 'WHERE') !== false ? " AND status = 'pending'" : " WHERE status = 'pending'"),
+            'approved' => "SELECT COUNT(*) AS c FROM stock_adjustments" . $storeFilter . (strpos($storeFilter, 'WHERE') !== false ? " AND status = 'approved'" : " WHERE status = 'approved'"),
+            'rejected' => "SELECT COUNT(*) AS c FROM stock_adjustments" . $storeFilter . (strpos($storeFilter, 'WHERE') !== false ? " AND status = 'rejected'" : " WHERE status = 'rejected'"),
         ];
 
         foreach ($statsQueries as $key => $sql) {
@@ -115,6 +143,41 @@ class AdjustmentController extends Controller {
         }
 
         return $stats;
+    }
+
+    private function getVisibleStoreIds($userId = null) {
+        if (empty($userId) || !ctype_digit((string)$userId)) {
+            return null;
+        }
+
+        $sql = "SELECT r.role_name, d.dept_code, d.dept_name, s.store_id
+                FROM users u
+                JOIN roles r ON r.role_id = u.role_id
+                LEFT JOIN departments d ON d.status = 'active' AND d.dept_name = r.role_name
+                LEFT JOIN stores s ON s.status = 'active'
+                    AND d.dept_code IS NOT NULL
+                    AND (
+                        s.store_code = CONCAT(d.dept_code, '001')
+                        OR s.store_code LIKE CONCAT(d.dept_code, '%')
+                        OR s.store_name LIKE CONCAT(d.dept_name, '%')
+                    )
+                WHERE u.user_id = ?
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if (!$row) {
+            return [];
+        }
+
+        if (in_array((string)$row['role_name'], ['Admin', 'Manager', 'Storekeeper'], true)) {
+            return null;
+        }
+
+        return !empty($row['store_id']) ? [(int)$row['store_id']] : [];
     }
 
     public function getById($adjustmentId) {

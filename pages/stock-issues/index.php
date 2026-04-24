@@ -8,6 +8,9 @@ if (!isAuthenticated()) {
 }
 
 $controller = new StockIssueController();
+$currentUser = getCurrentUser();
+$roleName = trim((string)($currentUser['role_name'] ?? ''));
+$isGlobalIssueRole = in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true);
 
 $filters = [
     'q' => $_GET['q'] ?? '',
@@ -54,7 +57,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
             <div class="col-md-3">
                 <label class="form-label">Store</label>
                 <select name="store_id" class="form-control">
-                    <option value="">All Stores</option>
+                    <option value=""><?php echo $isGlobalIssueRole ? 'All Stores' : 'Your Stores'; ?></option>
                     <?php foreach ($stores as $store): ?>
                         <option value="<?php echo (int)$store['store_id']; ?>" <?php echo ((string)$filters['store_id'] === (string)$store['store_id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($store['store_name']); ?></option>
                     <?php endforeach; ?>
@@ -63,7 +66,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
             <div class="col-md-3">
                 <label class="form-label">Department</label>
                 <select name="department_id" class="form-control">
-                    <option value="">All Departments</option>
+                    <option value=""><?php echo $isGlobalIssueRole ? 'All Departments' : 'Your Department'; ?></option>
                     <?php foreach ($departments as $department): ?>
                         <option value="<?php echo (int)$department['dept_id']; ?>" <?php echo ((string)$filters['department_id'] === (string)$department['dept_id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($department['dept_name']); ?></option>
                     <?php endforeach; ?>

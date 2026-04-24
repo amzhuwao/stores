@@ -14,74 +14,139 @@ $activePage = 'dashboard';
 $user = getCurrentUser();
 $db = Database::getInstance()->getConnection();
 
+$roleName = trim((string)($user['role_name'] ?? ''));
+$isGlobalDashboardRole = in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true);
+$scopedStoreIds = [];
+$scopedDepartmentId = 0;
+$denyScopedDashboard = false;
+
+if (!$isGlobalDashboardRole && $roleName !== '') {
+    $scopeSql = "SELECT DISTINCT s.store_id
+                 FROM departments d
+                 JOIN stores s ON s.status = 'active'
+                    AND (
+                        s.store_code = CONCAT(d.dept_code, '001')
+                        OR s.store_code LIKE CONCAT(d.dept_code, '%')
+                        OR s.store_name LIKE CONCAT(d.dept_name, '%')
+                    )
+                 WHERE d.status = 'active' AND d.dept_name = ?";
+
+    $scopeStmt = $db->prepare($scopeSql);
+    $scopeStmt->bind_param('s', $roleName);
+    $scopeStmt->execute();
+    $scopeResult = $scopeStmt->get_result();
+
+    while ($scopeRow = $scopeResult->fetch_assoc()) {
+        $scopedStoreIds[] = (int)$scopeRow['store_id'];
+    }
+
+    $deptStmt = $db->prepare("SELECT dept_id FROM departments WHERE status = 'active' AND dept_name = ? LIMIT 1");
+    $deptStmt->bind_param('s', $roleName);
+    $deptStmt->execute();
+    $deptRow = $deptStmt->get_result()->fetch_assoc();
+    $scopedDepartmentId = $deptRow ? (int)$deptRow['dept_id'] : 0;
+
+    $scopedStoreIds = array_values(array_unique($scopedStoreIds));
+    if (empty($scopedStoreIds)) {
+        $denyScopedDashboard = true;
+    }
+}
+
+$storeScopeFilter = '';
+if (!$isGlobalDashboardRole && !$denyScopedDashboard && !empty($scopedStoreIds)) {
+    $storeScopeFilter = ' AND s.store_id IN (' . implode(',', array_map('intval', $scopedStoreIds)) . ')';
+}
+
+$grnStoreScopeFilter = '';
+$requisitionScopeFilter = '';
+$transactionStoreScopeFilter = '';
+if (!$isGlobalDashboardRole && !$denyScopedDashboard && !empty($scopedStoreIds)) {
+    $storeScopeList = implode(',', array_map('intval', $scopedStoreIds));
+    $grnStoreScopeFilter = ' WHERE g.store_id IN (' . $storeScopeList . ')';
+    $transactionStoreScopeFilter = ' WHERE st.store_id IN (' . $storeScopeList . ')';
+    $requisitionScopeFilter = ' AND r.store_id IN (' . $storeScopeList . ')';
+
+    if ($scopedDepartmentId > 0) {
+        $requisitionScopeFilter .= ' AND r.department_id = ' . (int)$scopedDepartmentId;
+    }
+}
+
 // Get dashboard statistics
 $stats = [];
 
-// Total Products
-$result = $db->query("SELECT COUNT(*) as count FROM products WHERE status = 'active'");
-$stats['total_products'] = $result->fetch_assoc()['count'];
+if ($denyScopedDashboard) {
+    $stats['total_products'] = 0;
+    $stats['stock_value'] = 0;
+    $stats['low_stock'] = 0;
+    $stats['out_of_stock'] = 0;
+} else {
+    // Total Products (within scoped stores for departmental users)
+    $result = $db->query("\n        SELECT COUNT(DISTINCT p.product_id) as count\n        FROM products p\n        JOIN stock s ON s.product_id = p.product_id\n        WHERE p.status = 'active'" . $storeScopeFilter);
+    $stats['total_products'] = (int)$result->fetch_assoc()['count'];
 
-// Total Stock Value (sum of quantity * unit price from last GRN)
-$result = $db->query("
-    SELECT COALESCE(SUM(s.quantity_on_hand * 
-        COALESCE((SELECT unit_price FROM grn_items WHERE product_id = s.product_id ORDER BY grn_item_id DESC LIMIT 1), 0))
-    , 0) as total_value 
-    FROM stock s
-");
-$stats['stock_value'] = $result->fetch_assoc()['total_value'];
+    // Total Stock Value (sum of quantity * unit price from latest GRN within scope)
+    $result = $db->query("\n        SELECT COALESCE(SUM(s.quantity_on_hand *\n            COALESCE((SELECT unit_price FROM grn_items WHERE product_id = s.product_id ORDER BY grn_item_id DESC LIMIT 1), 0))\n        , 0) as total_value\n        FROM stock s\n        WHERE 1 = 1" . $storeScopeFilter);
+    $stats['stock_value'] = (float)$result->fetch_assoc()['total_value'];
 
-// Low Stock Items
-$result = $db->query("
-    SELECT COUNT(*) as count FROM stock 
-    WHERE quantity_on_hand <= reorder_level AND quantity_on_hand > 0
-");
-$stats['low_stock'] = $result->fetch_assoc()['count'];
+    // Low Stock Items
+    $result = $db->query("\n        SELECT COUNT(*) as count\n        FROM stock s\n        JOIN products p ON p.product_id = s.product_id\n        WHERE p.status = 'active'\n          AND s.quantity_on_hand <= s.reorder_level\n          AND s.quantity_on_hand > 0" . $storeScopeFilter);
+    $stats['low_stock'] = (int)$result->fetch_assoc()['count'];
 
-// Out of Stock
-$result = $db->query("
-    SELECT COUNT(*) as count FROM stock 
-    WHERE quantity_on_hand = 0
-");
-$stats['out_of_stock'] = $result->fetch_assoc()['count'];
+    // Out of Stock
+    $result = $db->query("\n        SELECT COUNT(*) as count\n        FROM stock s\n        JOIN products p ON p.product_id = s.product_id\n        WHERE p.status = 'active'\n          AND s.quantity_on_hand = 0" . $storeScopeFilter);
+    $stats['out_of_stock'] = (int)$result->fetch_assoc()['count'];
+}
 
 // Recent GRNs
-$recentGRNs = $db->query("
-    SELECT g.*, s.store_name, sup.supplier_name 
-    FROM grn g
-    JOIN stores s ON g.store_id = s.store_id
-    JOIN suppliers sup ON g.supplier_id = sup.supplier_id
-    ORDER BY g.receipt_date DESC
-    LIMIT 5
-")->fetch_all(MYSQLI_ASSOC);
+$recentGRNs = [];
+if (!$denyScopedDashboard) {
+    $recentGRNs = $db->query("
+        SELECT g.*, s.store_name, sup.supplier_name
+        FROM grn g
+        JOIN stores s ON g.store_id = s.store_id
+        JOIN suppliers sup ON g.supplier_id = sup.supplier_id"
+        . $grnStoreScopeFilter . "
+        ORDER BY g.receipt_date DESC
+        LIMIT 5
+    ")->fetch_all(MYSQLI_ASSOC);
+}
 
 // Pending Requisitions
-$pendingReqs = $db->query("
-    SELECT r.*, d.dept_name, s.store_name, u.full_name
-    FROM requisitions r
-    JOIN departments d ON r.department_id = d.dept_id
-    JOIN stores s ON r.store_id = s.store_id
-    JOIN users u ON r.requested_by = u.user_id
-    WHERE r.status = 'pending'
-    ORDER BY r.requested_date DESC
-    LIMIT 5
-")->fetch_all(MYSQLI_ASSOC);
+$pendingReqs = [];
+if (!$denyScopedDashboard) {
+    $pendingReqs = $db->query("
+        SELECT r.*, d.dept_name, s.store_name, u.full_name
+        FROM requisitions r
+        JOIN departments d ON r.department_id = d.dept_id
+        JOIN stores s ON r.store_id = s.store_id
+        JOIN users u ON r.requested_by = u.user_id
+        WHERE r.status = 'pending'"
+        . $requisitionScopeFilter . "
+        ORDER BY r.requested_date DESC
+        LIMIT 5
+    ")->fetch_all(MYSQLI_ASSOC);
+}
 
 // Recent Transactions
-$recentTransactions = $db->query("
-    SELECT st.*, p.product_name, s.store_name
-    FROM stock_transactions st
-    JOIN products p ON st.product_id = p.product_id
-    JOIN stores s ON st.store_id = s.store_id
-    ORDER BY st.transaction_date DESC
-    LIMIT 8
-")->fetch_all(MYSQLI_ASSOC);
+$recentTransactions = [];
+if (!$denyScopedDashboard) {
+    $recentTransactions = $db->query("
+        SELECT st.*, p.product_name, s.store_name
+        FROM stock_transactions st
+        JOIN products p ON st.product_id = p.product_id
+        JOIN stores s ON st.store_id = s.store_id"
+        . $transactionStoreScopeFilter . "
+        ORDER BY st.transaction_date DESC
+        LIMIT 8
+    ")->fetch_all(MYSQLI_ASSOC);
+}
 
 include 'app/views/layout-header.php';
 ?>
 
 <div class="page-header">
     <h1>Welcome, <?php echo $user['full_name']; ?>! 👋</h1>
-    <p>Here's an overview of your inventory management system</p>
+    <p>Here's an overview of your permitted inventory scope.</p>
 </div>
 
 <!-- Statistics Row -->

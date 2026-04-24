@@ -11,11 +11,6 @@ class RequisitionController extends Controller {
         $this->requisitionModel = new Requisition();
     }
 
-    public function getDepartments() {
-        $sql = "SELECT dept_id, dept_name FROM departments WHERE status = 'active' ORDER BY dept_name ASC";
-        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
-    }
-
     public function getDepartmentForRole($roleName) {
         $roleName = trim((string)$roleName);
         if ($roleName === '') {
@@ -33,8 +28,32 @@ class RequisitionController extends Controller {
         return $stmt->get_result()->fetch_assoc() ?: null;
     }
 
-    public function getStores() {
-        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active' ORDER BY store_name ASC";
+    public function getStores($userId = null) {
+        $storeIds = $this->getVisibleStoreIds($userId);
+        if ($storeIds === []) {
+            return [];
+        }
+
+        $sql = "SELECT store_id, store_name FROM stores WHERE status = 'active'";
+        if (is_array($storeIds) && !empty($storeIds)) {
+            $sql .= " AND store_id IN (" . implode(',', array_map('intval', $storeIds)) . ")";
+        }
+        $sql .= " ORDER BY store_name ASC";
+
+        return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+    }
+
+    public function getDepartments($userId = null) {
+        $sql = "SELECT dept_id, dept_name FROM departments WHERE status = 'active'";
+        if (!empty($userId) && ctype_digit((string)$userId)) {
+            $department = $this->getDepartmentForUser((int)$userId);
+            if (!$department) {
+                return [];
+            }
+            $sql .= " AND dept_id = " . (int)$department['dept_id'];
+        }
+        $sql .= " ORDER BY dept_name ASC";
+
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
@@ -65,7 +84,7 @@ class RequisitionController extends Controller {
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getRequisitions($filters = []) {
+    public function getRequisitions($filters = [], $userId = null) {
         $sql = "SELECT r.*, d.dept_name, s.store_name, u.full_name AS requested_by_name,
                     ua.full_name AS approved_by_name
                 FROM requisitions r
@@ -77,6 +96,14 @@ class RequisitionController extends Controller {
 
         $types = '';
         $params = [];
+        $storeIds = $this->getVisibleStoreIds($userId);
+        if ($storeIds === []) {
+            return [];
+        }
+
+        if (is_array($storeIds) && !empty($storeIds)) {
+            $sql .= " AND r.store_id IN (" . implode(',', array_map('intval', $storeIds)) . ")";
+        }
 
         if (!empty($filters['q'])) {
             $sql .= " AND (r.requisition_number LIKE ? OR d.dept_name LIKE ? OR s.store_name LIKE ?)";
@@ -118,7 +145,7 @@ class RequisitionController extends Controller {
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getStats() {
+    public function getStats($userId = null) {
         $stats = [
             'pending' => 0,
             'approved' => 0,
@@ -126,7 +153,17 @@ class RequisitionController extends Controller {
             'issued' => 0
         ];
 
-        $result = $this->db->query("SELECT status, COUNT(*) AS c FROM requisitions GROUP BY status");
+        $storeIds = $this->getVisibleStoreIds($userId);
+        if ($storeIds === []) {
+            return $stats;
+        }
+
+        $storeFilter = '';
+        if (is_array($storeIds) && !empty($storeIds)) {
+            $storeFilter = ' WHERE store_id IN (' . implode(',', array_map('intval', $storeIds)) . ')';
+        }
+
+        $result = $this->db->query("SELECT status, COUNT(*) AS c FROM requisitions" . $storeFilter . " GROUP BY status");
         while ($row = $result->fetch_assoc()) {
             if (array_key_exists($row['status'], $stats)) {
                 $stats[$row['status']] = (int)$row['c'];
@@ -142,6 +179,41 @@ class RequisitionController extends Controller {
 
     public function getItems($id) {
         return $this->requisitionModel->getItems((int)$id);
+    }
+
+    private function getVisibleStoreIds($userId = null) {
+        if (empty($userId) || !ctype_digit((string)$userId)) {
+            return null;
+        }
+
+        $sql = "SELECT r.role_name, d.dept_code, d.dept_name, s.store_id
+                FROM users u
+                JOIN roles r ON r.role_id = u.role_id
+                LEFT JOIN departments d ON d.status = 'active' AND d.dept_name = r.role_name
+                LEFT JOIN stores s ON s.status = 'active'
+                    AND d.dept_code IS NOT NULL
+                    AND (
+                        s.store_code = CONCAT(d.dept_code, '001')
+                        OR s.store_code LIKE CONCAT(d.dept_code, '%')
+                        OR s.store_name LIKE CONCAT(d.dept_name, '%')
+                    )
+                WHERE u.user_id = ?
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if (!$row) {
+            return [];
+        }
+
+        if (in_array((string)$row['role_name'], ['Admin', 'Manager', 'Storekeeper'], true)) {
+            return null;
+        }
+
+        return !empty($row['store_id']) ? [(int)$row['store_id']] : [];
     }
 
     public function create($data, $items, $userId) {

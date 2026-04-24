@@ -7,6 +7,10 @@ if (!isAuthenticated()) {
 }
 
 $controller = new AdjustmentController();
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+$currentUser = getCurrentUser();
+$roleName = trim((string)($currentUser['role_name'] ?? ''));
+$isGlobalAdjustmentRole = in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true);
 
 $filters = [
     'status' => $_GET['status'] ?? 'all',
@@ -14,9 +18,9 @@ $filters = [
     'reason' => $_GET['reason'] ?? ''
 ];
 
-$stores = $controller->getStores();
-$stats = $controller->getStats();
-$adjustments = $controller->getAdjustments($filters);
+$stores = $controller->getStores($currentUserId);
+$stats = $controller->getStats($currentUserId);
+$adjustments = $controller->getAdjustments($filters, $currentUserId);
 
 $pageTitle = 'Stock Adjustments';
 $activePage = 'adjustments';
@@ -77,14 +81,28 @@ include __DIR__ . '/../../app/views/layout-header.php';
             </div>
             <div class="col-md-4">
                 <label class="form-label">Store</label>
-                <select name="store_id" class="form-control">
-                    <option value="">All Stores</option>
-                    <?php foreach ($stores as $store): ?>
-                        <option value="<?php echo (int)$store['store_id']; ?>" <?php echo ((string)$filters['store_id'] === (string)$store['store_id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($store['store_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <?php if ($isGlobalAdjustmentRole): ?>
+                    <select name="store_id" class="form-control">
+                        <option value="">All Stores</option>
+                        <?php foreach ($stores as $store): ?>
+                            <option value="<?php echo (int)$store['store_id']; ?>" <?php echo ((string)$filters['store_id'] === (string)$store['store_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($store['store_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php elseif (count($stores) === 1): ?>
+                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($stores[0]['store_name']); ?>" readonly>
+                    <input type="hidden" name="store_id" value="<?php echo (int)$stores[0]['store_id']; ?>">
+                <?php else: ?>
+                    <select name="store_id" class="form-control">
+                        <option value="">Your Stores</option>
+                        <?php foreach ($stores as $store): ?>
+                            <option value="<?php echo (int)$store['store_id']; ?>" <?php echo ((string)$filters['store_id'] === (string)$store['store_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($store['store_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Reason</label>

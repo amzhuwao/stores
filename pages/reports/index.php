@@ -7,28 +7,43 @@ if (!isAuthenticated()) {
 }
 
 $controller = new ReportController();
+$currentUser = getCurrentUser();
+$currentUserId = (int)($_SESSION['user_id'] ?? 0);
+$roleName = trim((string)($currentUser['role_name'] ?? ''));
+$isGlobalReportRole = in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true);
 
 $dateFrom = $_GET['date_from'] ?? date('Y-m-01');
 $dateTo = $_GET['date_to'] ?? date('Y-m-d');
 $storeIdRaw = $_GET['store_id'] ?? '';
 $budgetPeriod = ($_GET['budget_period'] ?? 'monthly') === 'weekly' ? 'weekly' : 'monthly';
+
+$stores = $controller->getStores($currentUserId);
+$allowedStoreIds = array_map(static fn($store) => (int)$store['store_id'], $stores);
 $storeId = ctype_digit((string)$storeIdRaw) ? (int)$storeIdRaw : null;
 
-$stores = $controller->getStores();
-$summary = $controller->getSummary($dateFrom, $dateTo, $storeId);
-$financial = $controller->getFinancialKpis($dateFrom, $dateTo, $storeId);
-$movement = $controller->getStockMovement($dateFrom, $dateTo, $storeId);
-$lowStock = $controller->getLowStockItems($storeId);
-$topConsumed = $controller->getTopConsumedItems($dateFrom, $dateTo, $storeId);
-$trend = $controller->getMonthlyTrend(6, $storeId);
+if (!$isGlobalReportRole) {
+    if (empty($allowedStoreIds)) {
+        $storeId = null;
+    } elseif ($storeId === null || !in_array($storeId, $allowedStoreIds, true)) {
+        $storeId = $allowedStoreIds[0];
+    }
+} elseif ($storeId !== null) {
+    $storeId = in_array($storeId, $allowedStoreIds, true) || empty($allowedStoreIds) ? $storeId : null;
+}
+$summary = $controller->getSummary($dateFrom, $dateTo, $storeId, $currentUserId);
+$financial = $controller->getFinancialKpis($dateFrom, $dateTo, $storeId, $currentUserId);
+$movement = $controller->getStockMovement($dateFrom, $dateTo, $storeId, $currentUserId);
+$lowStock = $controller->getLowStockItems($storeId, $currentUserId);
+$topConsumed = $controller->getTopConsumedItems($dateFrom, $dateTo, $storeId, $currentUserId);
+$trend = $controller->getMonthlyTrend(6, $storeId, $currentUserId);
 
-$stockValuation = $controller->getStockValuationReport($storeId);
-$departmentConsumption = $controller->getDepartmentConsumptionReport($dateFrom, $dateTo, $storeId);
-$budgetVsSpend = $controller->getBudgetVsSpendReport($dateFrom, $dateTo, $budgetPeriod, $storeId);
-$monthlyPurchases = $controller->getMonthlyPurchaseReport($dateFrom, $dateTo, $storeId);
-$supplierPerformance = $controller->getSupplierPerformanceReport($dateFrom, $dateTo, $storeId);
-$variance = $controller->getVarianceReport($dateFrom, $dateTo, $storeId);
-$profitImpact = $controller->getProfitImpactAnalysis($dateFrom, $dateTo, $storeId);
+$stockValuation = $controller->getStockValuationReport($storeId, $currentUserId);
+$departmentConsumption = $controller->getDepartmentConsumptionReport($dateFrom, $dateTo, $storeId, $currentUserId);
+$budgetVsSpend = $controller->getBudgetVsSpendReport($dateFrom, $dateTo, $budgetPeriod, $storeId, $currentUserId);
+$monthlyPurchases = $controller->getMonthlyPurchaseReport($dateFrom, $dateTo, $storeId, $currentUserId);
+$supplierPerformance = $controller->getSupplierPerformanceReport($dateFrom, $dateTo, $storeId, $currentUserId);
+$variance = $controller->getVarianceReport($dateFrom, $dateTo, $storeId, $currentUserId);
+$profitImpact = $controller->getProfitImpactAnalysis($dateFrom, $dateTo, $storeId, $currentUserId);
 
 if (($_GET['export'] ?? '') === 'pdf') {
     $html = '<p><strong>Range:</strong> ' . htmlspecialchars($dateFrom) . ' to ' . htmlspecialchars($dateTo) . '</p>';
@@ -48,7 +63,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
 
 <div class="page-header">
     <h1>Financial Reports Dashboard</h1>
-    <p>Stock valuation, COGI, budgets, supplier spend, variance, and profit-impact analytics.</p>
+    <p>Stock valuation, COGI, budgets, supplier spend, variance, and profit-impact analytics within your permitted store scope.</p>
     <div class="mt-2">
         <a class="btn btn-outline-primary" href="<?php
             $query = $_GET;
@@ -72,14 +87,19 @@ include __DIR__ . '/../../app/views/layout-header.php';
             </div>
             <div class="col-md-3">
                 <label class="form-label">Store</label>
-                <select name="store_id" class="form-control">
-                    <option value="">All Stores</option>
-                    <?php foreach ($stores as $store): ?>
-                        <option value="<?php echo (int)$store['store_id']; ?>" <?php echo $storeId === (int)$store['store_id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($store['store_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <?php if ($isGlobalReportRole): ?>
+                    <select name="store_id" class="form-control">
+                        <option value="">All Stores</option>
+                        <?php foreach ($stores as $store): ?>
+                            <option value="<?php echo (int)$store['store_id']; ?>" <?php echo $storeId === (int)$store['store_id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($store['store_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php else: ?>
+                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($stores[0]['store_name'] ?? 'Unassigned'); ?>" readonly>
+                    <input type="hidden" name="store_id" value="<?php echo (int)($storeId ?? 0); ?>">
+                <?php endif; ?>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Budget Period</label>
@@ -106,7 +126,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
 <div class="row">
     <div class="col-lg-8">
         <div class="card">
-            <div class="card-header"><h5><i class="fas fa-coins"></i> Stock Valuation by Store</h5></div>
+            <div class="card-header"><h5><i class="fas fa-coins"></i> Stock Valuation by Store Scope</h5></div>
             <div class="card-body">
                 <?php if (!empty($stockValuation)): ?>
                     <div class="table-responsive">

@@ -8,6 +8,9 @@ if (!isAuthenticated()) {
 }
 
 $controller = new StockController();
+$currentUser = getCurrentUser();
+$roleName = trim((string)($currentUser['role_name'] ?? ''));
+$isGlobalStockRole = in_array($roleName, ['Admin', 'Manager', 'Storekeeper'], true);
 
 $filters = [
     'q' => $_GET['q'] ?? '',
@@ -20,6 +23,7 @@ $stores = $controller->getStores();
 $categories = $controller->getCategories();
 $rows = $controller->getStockLevels($filters);
 $stats = $controller->getStats($rows);
+$selectedStoreId = ctype_digit((string)$filters['store_id']) ? (int)$filters['store_id'] : null;
 
 $pageTitle = 'Stock Levels';
 $activePage = 'stock';
@@ -28,7 +32,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
 
 <div class="page-header">
     <h1>Stock Levels</h1>
-    <p>Track current stock position across all stores with low-stock and out-of-stock visibility.</p>
+    <p>Track current stock position across your permitted store scope with low-stock and out-of-stock visibility.</p>
 </div>
 
 <div class="row">
@@ -70,14 +74,28 @@ include __DIR__ . '/../../app/views/layout-header.php';
             </div>
             <div class="col-md-3">
                 <label class="form-label">Store</label>
-                <select name="store_id" class="form-control">
-                    <option value="">All Stores</option>
-                    <?php foreach ($stores as $store): ?>
-                        <option value="<?php echo (int)$store['store_id']; ?>" <?php echo ((string)$filters['store_id'] === (string)$store['store_id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($store['store_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                <?php if ($isGlobalStockRole): ?>
+                    <select name="store_id" class="form-control">
+                        <option value="">All Stores</option>
+                        <?php foreach ($stores as $store): ?>
+                            <option value="<?php echo (int)$store['store_id']; ?>" <?php echo ((string)$filters['store_id'] === (string)$store['store_id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($store['store_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php elseif (count($stores) === 1): ?>
+                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($stores[0]['store_name']); ?>" readonly>
+                    <input type="hidden" name="store_id" value="<?php echo (int)$stores[0]['store_id']; ?>">
+                <?php else: ?>
+                    <select name="store_id" class="form-control">
+                        <option value="">Your Stores</option>
+                        <?php foreach ($stores as $store): ?>
+                            <option value="<?php echo (int)$store['store_id']; ?>" <?php echo $selectedStoreId === (int)$store['store_id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($store['store_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Category</label>
@@ -109,7 +127,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
 
 <div class="card">
     <div class="card-header">
-        <h5><i class="fas fa-warehouse"></i> Stock by Store</h5>
+        <h5><i class="fas fa-warehouse"></i> Stock by Store Scope</h5>
     </div>
     <div class="card-body">
         <?php if (!empty($rows)): ?>
