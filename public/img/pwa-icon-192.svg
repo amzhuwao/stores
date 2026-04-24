@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title desc">
+  <title id="title">Manica Skyview Stores</title>
+  <desc id="desc">Inventory management app icon</desc>
+  <rect width="192" height="192" rx="42" fill="#667eea"/>
+  <circle cx="96" cy="96" r="58" fill="#ffffff" opacity="0.18"/>
+  <path d="M58 73h76v48H58z" fill="#fff"/>
+  <path d="M68 86h56v8H68zm0 16h40v8H68z" fill="#667eea"/>
+  <path d="M76 55h40v14H76z" fill="#764ba2"/>
+</svg>

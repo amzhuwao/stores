@@ -74,7 +74,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
-        <form method="POST">
+        <form method="POST" data-offline-queue="grn-create">
             <?php echo getCSRFTokenField(); ?>
             <div class="row g-3 mb-4">
                 <div class="col-md-4">

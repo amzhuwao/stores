@@ -4,9 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle ?? APP_NAME; ?></title>
+    <script>window.APP_BASE_URL = <?php echo json_encode(SITE_URL); ?>;</script>
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(Security::generateCSRFToken()); ?>">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="<?php echo htmlspecialchars(APP_NAME); ?>">
+    <link rel="manifest" href="<?php echo SITE_URL; ?>public/manifest.json">
+    <link rel="icon" href="<?php echo SITE_URL; ?>public/img/pwa-icon-192.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="<?php echo SITE_URL; ?>public/img/pwa-icon-192.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="<?php echo SITE_URL; ?>public/css/style.css" rel="stylesheet">
+    <script src="<?php echo SITE_URL; ?>public/js/pwa.js" defer></script>
 </head>
 <body>
     <?php

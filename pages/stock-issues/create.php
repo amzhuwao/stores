@@ -159,7 +159,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
                 <div class="col-md-3"><strong>Requested By</strong><br><?php echo htmlspecialchars($requisition['requested_by_name']); ?></div>
             </div>
 
-            <form method="POST">
+            <form method="POST" data-offline-queue="stock-issue-create">
                 <?php echo getCSRFTokenField(); ?>
                 <input type="hidden" name="issue_mode" value="requisition">
                 <input type="hidden" name="requisition_id" value="<?php echo (int)$requisition['requisition_id']; ?>">
@@ -268,7 +268,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
                 <?php if (empty($directProducts)): ?>
                     <div class="alert alert-warning mb-0">No in-stock products found in the selected store.</div>
                 <?php else: ?>
-                    <form method="POST">
+                    <form method="POST" data-offline-queue="direct-issue-create">
                         <?php echo getCSRFTokenField(); ?>
                         <input type="hidden" name="issue_mode" value="direct">
                         <input type="hidden" name="store_id" value="<?php echo (int)$directStoreId; ?>">

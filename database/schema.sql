@@ -440,6 +440,24 @@ CREATE TABLE audit_log (
     INDEX idx_user_action (user_id, action_date)
 );
 
+CREATE TABLE offline_sync_log (
+    sync_id INT PRIMARY KEY AUTO_INCREMENT,
+    client_record_id VARCHAR(100) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    record_type VARCHAR(80) NOT NULL,
+    page_url VARCHAR(255) NULL,
+    payload_json LONGTEXT NOT NULL,
+    status ENUM('pending', 'success', 'failed') DEFAULT 'pending',
+    server_reference_type VARCHAR(50) NULL,
+    server_reference_id INT NULL,
+    error_message TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    INDEX idx_offline_sync_status (status, created_at),
+    INDEX idx_offline_sync_user (user_id, created_at)
+);
+
 -- ====================================
 -- INITIAL DATA
 -- ====================================

@@ -80,7 +80,7 @@ include __DIR__ . '/../../app/views/layout-header.php';
         </form>
 
         <?php if ($selectedStoreId > 0): ?>
-            <form method="POST" class="row g-3" id="adjustmentForm">
+            <form method="POST" class="row g-3" id="adjustmentForm" data-offline-queue="adjustment-create">
                 <?php echo getCSRFTokenField(); ?>
                 <input type="hidden" name="store_id" value="<?php echo (int)$selectedStoreId; ?>">
 
