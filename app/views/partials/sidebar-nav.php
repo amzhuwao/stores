@@ -36,6 +36,11 @@
             <i class="fas fa-arrow-right"></i> Stock Issues
         </a>
     <?php endif; ?>
+    <?php if ($canIssues || $canStock): ?>
+        <a class="nav-link <?php echo (isset($activePage) && $activePage === 'consumption') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/stock-issues/consumption.php">
+            <i class="fas fa-utensils"></i> Consumption Logging
+        </a>
+    <?php endif; ?>
     <?php if ($canAdjustments): ?>
         <a class="nav-link <?php echo (isset($activePage) && $activePage === 'adjustments') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/adjustments/index.php">
             <i class="fas fa-sync"></i> Adjustments
@@ -91,6 +96,11 @@
     <?php if ($canSettings): ?>
         <a class="nav-link <?php echo (isset($activePage) && $activePage === 'settings') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/settings/index.php">
             <i class="fas fa-cogs"></i> Settings
+        </a>
+    <?php endif; ?>
+    <?php if ($canSettings): ?>
+        <a class="nav-link <?php echo (isset($activePage) && $activePage === 'consumption-permissions') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/settings/consumption-permissions.php">
+            <i class="fas fa-lock"></i> Consumption Permissions
         </a>
     <?php endif; ?>
     <?php if (!empty($canBackupSettings)): ?>

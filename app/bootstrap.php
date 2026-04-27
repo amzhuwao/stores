@@ -444,6 +444,52 @@ function ensureFinancialSchema() {
             $db->query("ALTER TABLE stock_transactions ADD COLUMN total_value DECIMAL(12,2) NULL AFTER unit_price");
         }
 
+        if (!$columnExists('stock_issue_items', 'quantity_consumed')) {
+            $db->query("ALTER TABLE stock_issue_items ADD COLUMN quantity_consumed INT NOT NULL DEFAULT 0 AFTER quantity_issued");
+        }
+        if (!$columnExists('stock_issue_items', 'quantity_returned')) {
+            $db->query("ALTER TABLE stock_issue_items ADD COLUMN quantity_returned INT NOT NULL DEFAULT 0 AFTER quantity_consumed");
+        }
+        if (!$columnExists('stock_issue_items', 'updated_at')) {
+            $db->query("ALTER TABLE stock_issue_items ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at");
+        }
+
+        if (!$tableExists('consumption_permissions')) {
+            $db->query("CREATE TABLE consumption_permissions (
+                permission_id INT PRIMARY KEY AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                department_id INT NOT NULL,
+                assigned_by INT NOT NULL,
+                can_log_consumption TINYINT(1) DEFAULT 1,
+                can_view_reports TINYINT(1) DEFAULT 0,
+                assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                revoked_at DATETIME NULL,
+                status ENUM('active', 'revoked') DEFAULT 'active',
+                UNIQUE KEY unique_user_dept (user_id, department_id),
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                FOREIGN KEY (department_id) REFERENCES departments(dept_id) ON DELETE CASCADE,
+                FOREIGN KEY (assigned_by) REFERENCES users(user_id),
+                INDEX idx_user_permissions (user_id, status),
+                INDEX idx_dept_permissions (department_id, status)
+            )");
+        }
+
+        if (!$tableExists('consumption_records')) {
+            $db->query("CREATE TABLE consumption_records (
+                consumption_id INT PRIMARY KEY AUTO_INCREMENT,
+                issue_item_id INT NOT NULL,
+                quantity_consumed INT NOT NULL,
+                logged_by INT NOT NULL,
+                log_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (issue_item_id) REFERENCES stock_issue_items(issue_item_id) ON DELETE CASCADE,
+                FOREIGN KEY (logged_by) REFERENCES users(user_id),
+                INDEX idx_consumption_date (log_date),
+                INDEX idx_issue_item_consumption (issue_item_id)
+            )");
+        }
+
         if (!$tableExists('pos_sales_usage')) {
             $db->query("CREATE TABLE pos_sales_usage (
                 pos_usage_id INT PRIMARY KEY AUTO_INCREMENT,

@@ -25,8 +25,7 @@ class StockIssueController extends Controller {
             $sql .= " AND si.department_id = ?";
             $types .= 'i';
             $params[] = (int)$scope['department_id'];
-        }
-        if (!empty($scope['store_id'])) {
+        } elseif (!empty($scope['store_id'])) {
             $sql .= " AND si.store_id = ?";
             $types .= 'i';
             $params[] = (int)$scope['store_id'];
@@ -239,8 +238,7 @@ class StockIssueController extends Controller {
         }
         if (!empty($scope['department_id'])) {
             $sql .= " AND si.department_id = " . (int)$scope['department_id'];
-        }
-        if (!empty($scope['store_id'])) {
+        } elseif (!empty($scope['store_id'])) {
             $sql .= " AND si.store_id = " . (int)$scope['store_id'];
         }
 
@@ -741,4 +739,299 @@ class StockIssueController extends Controller {
 
         return $scope;
     }
+
+    /**
+     * Consumption Methods
+     */
+
+    /**
+     * Get issue items for consumption logging
+     */
+    public function getIssueItemsForConsumption($issueId, $userId = null) {
+        $sql = "SELECT sii.*, p.product_name, p.product_code, p.unit_of_measure,
+                        si.department_id, d.dept_name
+                FROM stock_issue_items sii
+                JOIN products p ON p.product_id = sii.product_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN departments d ON si.department_id = d.dept_id
+                WHERE sii.issue_id = ?
+                ORDER BY sii.issue_item_id ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getIssueItemsForConsumption: " . $this->db->error);
+            return [];
+        }
+        $stmt->bind_param('i', $issueId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumable issues for a department
+     */
+    public function getConsumableIssuesForDepartment($departmentId, $includeCompleted = false) {
+        $sql = "SELECT si.*, d.dept_name, s.store_name, u.full_name AS issued_by_name,
+                        COUNT(sii.issue_item_id) as total_items,
+                        SUM(sii.quantity_issued) as total_quantity_issued,
+                        SUM(sii.quantity_consumed) as total_quantity_consumed,
+                        SUM(sii.quantity_returned) as total_quantity_returned
+                FROM stock_issues si
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN stores s ON si.store_id = s.store_id
+                JOIN users u ON si.issued_by = u.user_id
+                LEFT JOIN stock_issue_items sii ON si.issue_id = sii.issue_id
+                WHERE si.department_id = ? AND si.status IN ('issued', 'received')";
+        
+        if (!$includeCompleted) {
+            $sql .= " AND si.issue_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+        }
+        
+        $sql .= " GROUP BY si.issue_id
+                 ORDER BY si.issue_date DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumableIssuesForDepartment: " . $this->db->error);
+            return [];
+        }
+        $stmt->bind_param('i', $departmentId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumable issues across all departments
+     */
+    public function getConsumableIssues($includeCompleted = false) {
+        $sql = "SELECT si.*, d.dept_name, s.store_name, u.full_name AS issued_by_name,
+                        COUNT(sii.issue_item_id) as total_items,
+                        SUM(sii.quantity_issued) as total_quantity_issued,
+                        SUM(sii.quantity_consumed) as total_quantity_consumed,
+                        SUM(sii.quantity_returned) as total_quantity_returned
+                FROM stock_issues si
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN stores s ON si.store_id = s.store_id
+                JOIN users u ON si.issued_by = u.user_id
+                LEFT JOIN stock_issue_items sii ON si.issue_id = sii.issue_id
+                WHERE si.status IN ('issued', 'received')";
+
+        if (!$includeCompleted) {
+            $sql .= " AND si.issue_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+        }
+
+        $sql .= " GROUP BY si.issue_id
+                 ORDER BY si.issue_date DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumableIssues: " . $this->db->error);
+            return [];
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumable issues for current user's visibility scope.
+     */
+    public function getConsumableIssuesForUser($userId, $includeCompleted = true) {
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return [];
+        }
+
+        $sql = "SELECT si.*, d.dept_name, s.store_name, u.full_name AS issued_by_name,
+                        COUNT(sii.issue_item_id) as total_items,
+                        COALESCE(SUM(sii.quantity_issued), 0) as total_quantity_issued,
+                        COALESCE(SUM(sii.quantity_consumed), 0) as total_quantity_consumed,
+                        COALESCE(SUM(sii.quantity_returned), 0) as total_quantity_returned
+                FROM stock_issues si
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN stores s ON si.store_id = s.store_id
+                JOIN users u ON si.issued_by = u.user_id
+                LEFT JOIN stock_issue_items sii ON si.issue_id = sii.issue_id
+                WHERE si.status IN ('issued', 'received')";
+
+        $types = '';
+        $params = [];
+
+        if (!empty($scope['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['department_id'];
+        } elseif (!empty($scope['store_id'])) {
+            $sql .= " AND si.store_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['store_id'];
+        }
+        if (!$includeCompleted) {
+            $sql .= " AND si.issue_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+        }
+
+        $sql .= " GROUP BY si.issue_id
+                  HAVING (total_quantity_issued - total_quantity_consumed - total_quantity_returned) > 0
+                  ORDER BY si.issue_date DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumableIssuesForUser: " . $this->db->error);
+            return [];
+        }
+
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get all pending issue items needing consumption logging
+     */
+    public function getPendingConsumptionItems($departmentId) {
+        $sql = "SELECT sii.*, p.product_name, p.product_code, p.unit_of_measure,
+                        si.issue_number, si.issue_date, d.dept_name,
+                        (sii.quantity_issued - sii.quantity_consumed - sii.quantity_returned) as quantity_pending
+                FROM stock_issue_items sii
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN products p ON sii.product_id = p.product_id
+                WHERE si.department_id = ? 
+                  AND si.status IN ('issued', 'received')
+                  AND (sii.quantity_consumed + sii.quantity_returned) < sii.quantity_issued
+                ORDER BY si.issue_date DESC, sii.issue_item_id ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getPendingConsumptionItems: " . $this->db->error);
+            return [];
+        }
+        $stmt->bind_param('i', $departmentId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get all pending issue items needing consumption logging across departments
+     */
+    public function getPendingConsumptionItemsAll() {
+        $sql = "SELECT sii.*, p.product_name, p.product_code, p.unit_of_measure,
+                        si.issue_number, si.issue_date, d.dept_name,
+                        (sii.quantity_issued - sii.quantity_consumed - sii.quantity_returned) as quantity_pending
+                FROM stock_issue_items sii
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN products p ON sii.product_id = p.product_id
+                WHERE si.status IN ('issued', 'received')
+                  AND (sii.quantity_consumed + sii.quantity_returned) < sii.quantity_issued
+                ORDER BY si.issue_date DESC, sii.issue_item_id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getPendingConsumptionItemsAll: " . $this->db->error);
+            return [];
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get pending issue items for current user's visibility scope.
+     */
+    public function getPendingConsumptionItemsForUser($userId) {
+        $scope = $this->getIssueVisibilityScope($userId);
+        if (!empty($scope['deny_all'])) {
+            return [];
+        }
+
+        $sql = "SELECT sii.*, p.product_name, p.product_code, p.unit_of_measure,
+                        si.issue_number, si.issue_date, si.department_id, si.store_id,
+                        d.dept_name, s.store_name,
+                        (sii.quantity_issued - sii.quantity_consumed - sii.quantity_returned) as quantity_pending
+                FROM stock_issue_items sii
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN stores s ON si.store_id = s.store_id
+                JOIN products p ON sii.product_id = p.product_id
+                WHERE si.status IN ('issued', 'received')
+                  AND (sii.quantity_consumed + sii.quantity_returned) < sii.quantity_issued";
+
+        $types = '';
+        $params = [];
+
+        if (!empty($scope['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['department_id'];
+        }
+        if (!empty($scope['store_id'])) {
+            $sql .= " AND si.store_id = ?";
+            $types .= 'i';
+            $params[] = (int)$scope['store_id'];
+        }
+
+        $sql .= " ORDER BY si.issue_date DESC, sii.issue_item_id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getPendingConsumptionItemsForUser: " . $this->db->error);
+            return [];
+        }
+
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumption summary for a department
+     */
+    public function getConsumptionSummary($departmentId, $startDate = null, $endDate = null) {
+        $sql = "SELECT 
+                    p.product_id,
+                    p.product_name,
+                    p.product_code,
+                    p.unit_of_measure,
+                    SUM(sii.quantity_issued) as total_issued,
+                    SUM(sii.quantity_consumed) as total_consumed,
+                    SUM(sii.quantity_returned) as total_returned,
+                    (SUM(sii.quantity_issued) - SUM(sii.quantity_consumed) - SUM(sii.quantity_returned)) as total_unaccounted
+                FROM stock_issue_items sii
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN products p ON sii.product_id = p.product_id
+                WHERE si.department_id = ?";
+        
+        $types = 'i';
+        $params = [$departmentId];
+        
+        if ($startDate) {
+            $sql .= " AND si.issue_date >= ?";
+            $types .= 's';
+            $params[] = $startDate;
+        }
+        
+        if ($endDate) {
+            $sql .= " AND si.issue_date <= ?";
+            $types .= 's';
+            $params[] = $endDate;
+        }
+        
+        $sql .= " GROUP BY p.product_id
+                 ORDER BY p.product_name ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumptionSummary: " . $this->db->error);
+            return [];
+        }
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
 }
+

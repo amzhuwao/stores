@@ -4,14 +4,14 @@
 -- ====================================
 -- 1. USERS & ROLES
 -- ====================================
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     role_id INT PRIMARY KEY AUTO_INCREMENT,
     role_name VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE users (
     FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
 
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
     token_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     token_hash VARCHAR(64) NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE password_reset_tokens (
     INDEX idx_reset_token_expires (expires_at)
 );
 
-CREATE TABLE backup_settings (
+CREATE TABLE IF NOT EXISTS backup_settings (
     setting_id TINYINT PRIMARY KEY DEFAULT 1,
     is_enabled TINYINT(1) NOT NULL DEFAULT 0,
     frequency ENUM('daily', 'weekly', 'monthly') NOT NULL DEFAULT 'daily',
@@ -53,7 +53,7 @@ CREATE TABLE backup_settings (
     FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
-CREATE TABLE backup_history (
+CREATE TABLE IF NOT EXISTS backup_history (
     backup_id INT PRIMARY KEY AUTO_INCREMENT,
     file_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE backup_history (
     INDEX idx_backup_history_trigger (trigger_type)
 );
 
-CREATE TABLE restore_history (
+CREATE TABLE IF NOT EXISTS restore_history (
     restore_id INT PRIMARY KEY AUTO_INCREMENT,
     source_type ENUM('stored_backup', 'upload') NOT NULL,
     source_label VARCHAR(255) NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE restore_history (
 -- ====================================
 -- 2. STORES (Kitchen, Bar, Housekeeping, Maintenance)
 -- ====================================
-CREATE TABLE stores (
+CREATE TABLE IF NOT EXISTS stores (
     store_id INT PRIMARY KEY AUTO_INCREMENT,
     store_name VARCHAR(100) NOT NULL,
     store_code VARCHAR(20) UNIQUE NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE stores (
 -- ====================================
 -- 3. DEPARTMENTS (Requesters of stock)
 -- ====================================
-CREATE TABLE departments (
+CREATE TABLE IF NOT EXISTS departments (
     dept_id INT PRIMARY KEY AUTO_INCREMENT,
     dept_name VARCHAR(100) NOT NULL,
     dept_code VARCHAR(20) UNIQUE NOT NULL,
@@ -124,7 +124,7 @@ CREATE TABLE departments (
 -- ====================================
 -- 4. SUPPLIERS
 -- ====================================
-CREATE TABLE suppliers (
+CREATE TABLE IF NOT EXISTS suppliers (
     supplier_id INT PRIMARY KEY AUTO_INCREMENT,
     supplier_name VARCHAR(100) NOT NULL,
     contact_person VARCHAR(100),
@@ -142,7 +142,7 @@ CREATE TABLE suppliers (
 -- ====================================
 -- 5. PRODUCT CATEGORIES
 -- ====================================
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
     category_name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -153,7 +153,7 @@ CREATE TABLE categories (
 -- ====================================
 -- 6. PRODUCTS/ITEMS
 -- ====================================
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     product_id INT PRIMARY KEY AUTO_INCREMENT,
     product_name VARCHAR(100) NOT NULL,
     product_code VARCHAR(50) UNIQUE NOT NULL,
@@ -170,7 +170,7 @@ CREATE TABLE products (
 -- ====================================
 -- 7. STOCK (Current inventory levels per store)
 -- ====================================
-CREATE TABLE stock (
+CREATE TABLE IF NOT EXISTS stock (
     stock_id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
     store_id INT NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE stock (
 -- ====================================
 -- 8. GOODS RECEIVED NOTES (GRN)
 -- ====================================
-CREATE TABLE grn (
+CREATE TABLE IF NOT EXISTS grn (
     grn_id INT PRIMARY KEY AUTO_INCREMENT,
     grn_number VARCHAR(50) UNIQUE NOT NULL,
     supplier_id INT NOT NULL,
@@ -210,7 +210,7 @@ CREATE TABLE grn (
 -- ====================================
 -- 9. GRN ITEMS (Line items in GRN)
 -- ====================================
-CREATE TABLE grn_items (
+CREATE TABLE IF NOT EXISTS grn_items (
     grn_item_id INT PRIMARY KEY AUTO_INCREMENT,
     grn_id INT NOT NULL,
     product_id INT NOT NULL,
@@ -229,7 +229,7 @@ CREATE TABLE grn_items (
 -- ====================================
 -- 10. REQUISITIONS (Department requests)
 -- ====================================
-CREATE TABLE requisitions (
+CREATE TABLE IF NOT EXISTS requisitions (
     requisition_id INT PRIMARY KEY AUTO_INCREMENT,
     requisition_number VARCHAR(50) UNIQUE NOT NULL,
     department_id INT NOT NULL,
@@ -252,7 +252,7 @@ CREATE TABLE requisitions (
 -- ====================================
 -- 11. REQUISITION ITEMS
 -- ====================================
-CREATE TABLE requisition_items (
+CREATE TABLE IF NOT EXISTS requisition_items (
     req_item_id INT PRIMARY KEY AUTO_INCREMENT,
     requisition_id INT NOT NULL,
     product_id INT NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE requisition_items (
 -- ====================================
 -- 12. STOCK ISSUES (Actual stock distribution)
 -- ====================================
-CREATE TABLE stock_issues (
+CREATE TABLE IF NOT EXISTS stock_issues (
     issue_id INT PRIMARY KEY AUTO_INCREMENT,
     issue_number VARCHAR(50) UNIQUE NOT NULL,
     requisition_id INT,
@@ -293,24 +293,65 @@ CREATE TABLE stock_issues (
 -- ====================================
 -- 13. STOCK ISSUE ITEMS
 -- ====================================
-CREATE TABLE stock_issue_items (
+CREATE TABLE IF NOT EXISTS stock_issue_items (
     issue_item_id INT PRIMARY KEY AUTO_INCREMENT,
     issue_id INT NOT NULL,
     product_id INT NOT NULL,
     quantity_issued INT NOT NULL,
+    quantity_consumed INT DEFAULT 0,
+    quantity_returned INT DEFAULT 0,
     batch_number VARCHAR(50),
     expiry_date DATE,
     unit_price DECIMAL(10, 2),
     remarks TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (issue_id) REFERENCES stock_issues(issue_id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
 -- ====================================
--- 14. STOCK TRANSACTIONS (Audit trail)
+-- 14. CONSUMPTION LOGGING PERMISSIONS
 -- ====================================
-CREATE TABLE stock_transactions (
+CREATE TABLE IF NOT EXISTS consumption_permissions (
+    permission_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    department_id INT NOT NULL,
+    assigned_by INT NOT NULL,
+    can_log_consumption TINYINT(1) DEFAULT 1,
+    can_view_reports TINYINT(1) DEFAULT 0,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked_at DATETIME NULL,
+    status ENUM('active', 'revoked') DEFAULT 'active',
+    UNIQUE KEY unique_user_dept (user_id, department_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (department_id) REFERENCES departments(dept_id) ON DELETE CASCADE,
+    FOREIGN KEY (assigned_by) REFERENCES users(user_id),
+    INDEX idx_user_permissions (user_id, status),
+    INDEX idx_dept_permissions (department_id, status)
+);
+
+-- ====================================
+-- 15. CONSUMPTION RECORDS
+-- ====================================
+CREATE TABLE IF NOT EXISTS consumption_records (
+    consumption_id INT PRIMARY KEY AUTO_INCREMENT,
+    issue_item_id INT NOT NULL,
+    quantity_consumed INT NOT NULL,
+    logged_by INT NOT NULL,
+    log_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (issue_item_id) REFERENCES stock_issue_items(issue_item_id) ON DELETE CASCADE,
+    FOREIGN KEY (logged_by) REFERENCES users(user_id),
+    INDEX idx_consumption_date (log_date),
+    INDEX idx_issue_item_consumption (issue_item_id)
+);
+
+-- ====================================
+-- 16. STOCK TRANSACTIONS (Audit trail)
+-- ====================================
+CREATE TABLE IF NOT EXISTS stock_transactions (
     transaction_id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
     store_id INT NOT NULL,
@@ -330,7 +371,7 @@ CREATE TABLE stock_transactions (
     INDEX idx_transaction_date (transaction_date)
 );
 
-CREATE TABLE pos_sales_usage (
+CREATE TABLE IF NOT EXISTS pos_sales_usage (
     pos_usage_id INT PRIMARY KEY AUTO_INCREMENT,
     integration_source VARCHAR(50) NOT NULL DEFAULT 'manual',
     sale_reference VARCHAR(100) NOT NULL,
@@ -349,9 +390,9 @@ CREATE TABLE pos_sales_usage (
 );
 
 -- ====================================
--- 15. BATCH & EXPIRY TRACKING
+-- 17. BATCH & EXPIRY TRACKING
 -- ====================================
-CREATE TABLE batch_tracking (
+CREATE TABLE IF NOT EXISTS batch_tracking (
     batch_id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
     store_id INT NOT NULL,
@@ -370,9 +411,9 @@ CREATE TABLE batch_tracking (
 );
 
 -- ====================================
--- 16. STOCK ADJUSTMENTS
+-- 18. STOCK ADJUSTMENTS
 -- ====================================
-CREATE TABLE stock_adjustments (
+CREATE TABLE IF NOT EXISTS stock_adjustments (
     adjustment_id INT PRIMARY KEY AUTO_INCREMENT,
     adjustment_number VARCHAR(50) UNIQUE NOT NULL,
     store_id INT NOT NULL,
@@ -390,9 +431,9 @@ CREATE TABLE stock_adjustments (
 );
 
 -- ====================================
--- 17. ADJUSTMENT ITEMS
+-- 19. ADJUSTMENT ITEMS
 -- ====================================
-CREATE TABLE adjustment_items (
+CREATE TABLE IF NOT EXISTS adjustment_items (
     adj_item_id INT PRIMARY KEY AUTO_INCREMENT,
     adjustment_id INT NOT NULL,
     product_id INT NOT NULL,
@@ -404,9 +445,9 @@ CREATE TABLE adjustment_items (
 );
 
 -- ====================================
--- 18. REORDER ALERTS
--- ====================================
-CREATE TABLE reorder_alerts (
+-- 20. REORDER ALERTS
+-- ===================================
+CREATE TABLE IF NOT EXISTS reorder_alerts (
     alert_id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
     store_id INT NOT NULL,
@@ -423,9 +464,9 @@ CREATE TABLE reorder_alerts (
 );
 
 -- ====================================
--- 19. AUDIT LOG
+-- 21. AUDIT LOG
 -- ====================================
-CREATE TABLE audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
     log_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     action VARCHAR(100) NOT NULL,
@@ -440,7 +481,7 @@ CREATE TABLE audit_log (
     INDEX idx_user_action (user_id, action_date)
 );
 
-CREATE TABLE offline_sync_log (
+CREATE TABLE IF NOT EXISTS offline_sync_log (
     sync_id INT PRIMARY KEY AUTO_INCREMENT,
     client_record_id VARCHAR(100) NOT NULL UNIQUE,
     user_id INT NOT NULL,
@@ -463,7 +504,7 @@ CREATE TABLE offline_sync_log (
 -- ====================================
 
 -- Insert Roles
-INSERT INTO roles (role_name, description) VALUES
+INSERT IGNORE INTO roles (role_name, description) VALUES
 ('Admin', 'System administrator with full access'),
 ('Storekeeper', 'Manages stock and inventory'),
 ('Kitchen', 'Kitchen department'),
@@ -474,14 +515,14 @@ INSERT INTO roles (role_name, description) VALUES
 ('Manager', 'Store manager');
 
 -- Insert Stores
-INSERT INTO stores (store_name, store_code, location, description) VALUES
+INSERT IGNORE INTO stores (store_name, store_code, location, description) VALUES
 ('Kitchen Store', 'KIT001', 'Ground Floor Kitchen', 'Main kitchen storage'),
 ('Bar Store', 'BAR001', 'Ground Floor Bar', 'Beverage and bar supplies'),
 ('Housekeeping Store', 'HNK001', 'Basement', 'Cleaning and laundry supplies'),
 ('Maintenance Store', 'MNT001', 'Basement', 'Tools and maintenance supplies');
 
 -- Insert Departments
-INSERT INTO departments (dept_name, dept_code) VALUES
+INSERT IGNORE INTO departments (dept_name, dept_code) VALUES
 ('Kitchen', 'KIT'),
 ('Bar', 'BAR'),
 ('Housekeeping', 'HNK'),
@@ -489,7 +530,7 @@ INSERT INTO departments (dept_name, dept_code) VALUES
 ('Front Office', 'FRO');
 
 -- Insert Categories
-INSERT INTO categories (category_name, description) VALUES
+INSERT IGNORE INTO categories (category_name, description) VALUES
 ('Food Items', 'Cooking ingredients and food'),
 ('Beverages', 'Drinks and beverage supplies'),
 ('Cleaning Supplies', 'Cleaning and maintenance chemicals'),
@@ -499,7 +540,7 @@ INSERT INTO categories (category_name, description) VALUES
 ('Packaging Materials', 'Boxes, bags, and packaging');
 
 -- Insert Sample Products
-INSERT INTO products (product_name, product_code, category_id, unit_of_measure, reorder_level, reorder_quantity) VALUES
+INSERT IGNORE INTO products (product_name, product_code, category_id, unit_of_measure, reorder_level, reorder_quantity) VALUES
 ('Cooking Oil - 5L', 'OIL-001', 1, 'Liters', 10, 50),
 ('Salt - 1KG', 'SAL-001', 1, 'KG', 5, 20),
 ('Sugar - 1KG', 'SUG-001', 1, 'KG', 5, 20),
@@ -514,15 +555,15 @@ INSERT INTO products (product_name, product_code, category_id, unit_of_measure, 
 ('Wrench Set', 'WRN-001', 6, 'Set', 2, 5);
 
 -- Create admin user (password: admin123 - should be hashed in practice)
-INSERT INTO users (username, email, password, full_name, role_id) VALUES
+INSERT IGNORE INTO users (username, email, password, full_name, role_id) VALUES
 ('admin', 'admin@hotel.com', SHA2('admin123', 256), 'System Admin', 1),
 ('storekeeper1', 'storekeeper@hotel.com', SHA2('store123', 256), 'John Storekeeper', 2);
 
 -- ====================================
 -- INDEXES FOR PERFORMANCE
 -- ====================================
-CREATE INDEX idx_grn_date ON grn(receipt_date);
-CREATE INDEX idx_requisition_date ON requisitions(requested_date);
-CREATE INDEX idx_issue_date ON stock_issues(issue_date);
-CREATE INDEX idx_stock_level ON stock(quantity_on_hand);
-CREATE INDEX idx_product_code ON products(product_code);
+CREATE INDEX IF NOT EXISTS idx_grn_date ON grn(receipt_date);
+CREATE INDEX IF NOT EXISTS idx_requisition_date ON requisitions(requested_date);
+CREATE INDEX IF NOT EXISTS idx_issue_date ON stock_issues(issue_date);
+CREATE INDEX IF NOT EXISTS idx_stock_level ON stock(quantity_on_hand);
+CREATE INDEX IF NOT EXISTS idx_product_code ON products(product_code);
