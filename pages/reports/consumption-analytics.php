@@ -77,15 +77,15 @@ $activePage = 'analytics';
         </div>
         <div class="card-body">
             <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="start_date" class="form-label">Start Date</label>
                     <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>">
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="end_date" class="form-label">End Date</label>
                     <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-12 col-md-3">
                     <label for="department_id" class="form-label">Department</label>
                     <select class="form-select" id="department_id" name="department_id">
                         <option value="">All Departments</option>
@@ -96,9 +96,11 @@ $activePage = 'analytics';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-5">
-                    <button type="submit" class="btn btn-primary">Update Analytics</button>
-                    <a href="?" class="btn btn-outline-secondary">Reset</a>
+                <div class="col-12 col-md-5">
+                    <button type="submit" class="btn btn-primary w-100">Update Analytics</button>
+                </div>
+                <div class="col-12 col-md-12">
+                    <a href="?" class="btn btn-outline-secondary w-100">Reset</a>
                 </div>
             </form>
         </div>
@@ -106,7 +108,7 @@ $activePage = 'analytics';
 
     <!-- Key Metrics -->
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-12 col-sm-6 col-md-3">
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Total Logs</h6>
@@ -115,7 +117,7 @@ $activePage = 'analytics';
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-12 col-sm-6 col-md-3">
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Total Consumed</h6>
@@ -124,7 +126,7 @@ $activePage = 'analytics';
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-12 col-sm-6 col-md-3">
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Avg per Log</h6>
@@ -133,7 +135,7 @@ $activePage = 'analytics';
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-12 col-sm-6 col-md-3">
             <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-title text-muted">Products</h6>
@@ -146,7 +148,7 @@ $activePage = 'analytics';
 
     <!-- Charts -->
     <div class="row mb-4">
-        <div class="col-lg-8">
+        <div class="col-12 col-lg-8">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Consumption Trend (Daily)</h5>
@@ -156,7 +158,7 @@ $activePage = 'analytics';
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
+        <div class="col-12 col-lg-4">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Consumption by Department</h5>
@@ -169,7 +171,7 @@ $activePage = 'analytics';
     </div>
 
     <div class="row mb-4">
-        <div class="col-lg-6">
+        <div class="col-12 col-lg-6">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Top 10 Consumed Products</h5>
@@ -179,7 +181,7 @@ $activePage = 'analytics';
                 </div>
             </div>
         </div>
-        <div class="col-lg-6">
+        <div class="col-12 col-lg-6">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Top 10 Products (Details)</h5>

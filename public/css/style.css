@@ -90,12 +90,32 @@ body {
 }
 
 .sidebar .nav-section-title {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 12px;
-    font-weight: 600;
-    padding: 15px 20px 10px;
+    color: #f8fbff;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 18px 20px 8px;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.6px;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar .nav-section-title::after {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 2px;
+    margin-top: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.95), rgba(118, 75, 162, 0.35));
+}
+
+.mobile-nav-drawer .nav-section-title {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    padding-top: 18px;
 }
 
 /* ========================================
@@ -688,4 +708,350 @@ select.form-control {
 
 .text-info {
     color: #3498db;
+}
+
+/* ========================================
+    MOBILE ENHANCEMENTS
+    ======================================== */
+
+/* Mobile-friendly buttons */
+@media (max-width: 576px) {
+    .btn {
+        min-height: 44px;
+        padding: 10px 16px;
+        font-size: 16px;
+    }
+    
+    .btn-sm {
+        min-height: 40px;
+        padding: 8px 12px;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+/* Responsive tables - stacked cards on mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        margin-bottom: 0;
+    }
+    
+    .table {
+        font-size: 14px;
+    }
+    
+    .table thead {
+        display: none;
+    }
+    
+    .table tbody,
+    .table tr,
+    .table td {
+        display: block;
+        width: 100%;
+    }
+    
+    .table tbody tr {
+        margin-bottom: 15px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+        background: white;
+    }
+    
+    .table tbody td {
+        padding: 12px;
+        text-align: right;
+        padding-left: calc(40% + 12px);
+        position: relative;
+        border: none;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .table tbody td:last-child {
+        border-bottom: none;
+    }
+    
+    .table tbody td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 12px;
+        font-weight: 600;
+        text-align: left;
+        width: 40%;
+        color: #2c3e50;
+    }
+}
+
+/* Form improvements for mobile */
+@media (max-width: 768px) {
+    .form-control,
+    select.form-control,
+    textarea.form-control {
+        font-size: 16px;
+        padding: 12px 14px;
+        min-height: 44px;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+    
+    .row.g-3 > * {
+        margin-bottom: 12px;
+    }
+    
+    .col-md-2,
+    .col-md-3,
+    .col-md-4,
+    .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    /* Better form layout for mobile */
+    form .row {
+        row-gap: 12px;
+    }
+}
+
+/* Card improvements */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 15px;
+        border-radius: 6px;
+    }
+    
+    .card-header {
+        padding: 12px 16px;
+    }
+    
+    .card-header h5 {
+        font-size: 15px;
+    }
+    
+    .card-body {
+        padding: 16px;
+    }
+    
+    /* Stat cards in grid */
+    .row > [class*='col-'] {
+        margin-bottom: 12px;
+    }
+}
+
+/* Modal improvements for mobile */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 0;
+        max-width: none;
+        width: 100%;
+        height: 100vh;
+    }
+    
+    .modal.show .modal-dialog {
+        max-width: none;
+        margin: 0;
+    }
+    
+    .modal-content {
+        height: 100vh;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .modal-header {
+        padding: 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    
+    .modal-footer {
+        padding: 12px 16px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+}
+
+/* Navigation drawer improvements */
+@media (max-width: 768px) {
+    .topbar {
+        padding: 12px 16px;
+        min-height: 56px;
+    }
+    
+    .topbar-title {
+        font-size: 16px;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .main-content {
+        padding: 16px 12px;
+    }
+    
+    .page-header {
+        margin-bottom: 20px;
+    }
+    
+    .page-header h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+    
+    .page-header p {
+        font-size: 13px;
+    }
+}
+
+/* Grid layout improvements */
+@media (max-width: 992px) {
+    .row {
+        --bs-gutter-x: 12px;
+        --bs-gutter-y: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .row {
+        --bs-gutter-x: 8px;
+        --bs-gutter-y: 8px;
+    }
+    
+    [class*="col-"] {
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+}
+
+/* Responsive typography */
+@media (max-width: 576px) {
+    h1 {
+        font-size: 22px !important;
+    }
+    
+    h2 {
+        font-size: 18px !important;
+    }
+    
+    h3 {
+        font-size: 16px !important;
+    }
+    
+    h4 {
+        font-size: 15px !important;
+    }
+    
+    h5 {
+        font-size: 14px !important;
+    }
+    
+    p {
+        font-size: 14px;
+    }
+}
+
+/* Badge & alerts mobile */
+@media (max-width: 576px) {
+    .badge {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+    
+    .alert {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+    
+    .alert-dismissible {
+        padding-right: 35px;
+    }
+}
+
+/* Tab improvements for mobile */
+@media (max-width: 768px) {
+    .nav-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 16px;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 10px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+}
+
+/* List group improvements */
+@media (max-width: 768px) {
+    .list-group-item {
+        padding: 12px 16px;
+    }
+}
+
+/* Progress bar improvements */
+@media (max-width: 768px) {
+    .progress {
+        min-height: 20px;
+    }
+}
+
+/* Touch-friendly spacing */
+@media (max-width: 768px) {
+    a,
+    button,
+    [role="button"],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+        margin-top: 4px;
+    }
+}
+
+/* Optimize space for small phones */
+@media (max-width: 480px) {
+    .container-fluid {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    
+    .main-content {
+        padding: 12px;
+    }
+    
+    .card-body {
+        padding: 12px;
+    }
+    
+    .btn {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .table tbody td {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
 }

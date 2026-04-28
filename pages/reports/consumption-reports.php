@@ -87,15 +87,15 @@ $activePage = 'reports';
         </div>
         <div class="card-body">
             <form method="GET" class="row g-3">
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="start_date" class="form-label">Start Date</label>
                     <input type="date" class="form-control" id="start_date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>">
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="end_date" class="form-label">End Date</label>
                     <input type="date" class="form-control" id="end_date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>">
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="department_id" class="form-label">Department</label>
                     <select class="form-select" id="department_id" name="department_id">
                         <option value="">All Departments</option>
@@ -106,7 +106,7 @@ $activePage = 'reports';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="product_id" class="form-label">Product</label>
                     <select class="form-select" id="product_id" name="product_id">
                         <option value="">All Products</option>
@@ -117,7 +117,7 @@ $activePage = 'reports';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="store_id" class="form-label">Store</label>
                     <select class="form-select" id="store_id" name="store_id">
                         <option value="">All Stores</option>
@@ -128,7 +128,7 @@ $activePage = 'reports';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-12 col-md-2">
                     <label for="report_type" class="form-label">Report Type</label>
                     <select class="form-select" id="report_type" name="report_type">
                         <option value="detailed" <?php echo $report_type === 'detailed' ? 'selected' : ''; ?>>Detailed</option>
@@ -136,9 +136,9 @@ $activePage = 'reports';
                         <option value="by-department" <?php echo $report_type === 'by-department' ? 'selected' : ''; ?>>By Department</option>
                     </select>
                 </div>
-                <div class="col-md-12">
-                    <button type="submit" class="btn btn-primary">Generate Report</button>
-                    <a href="?report_type=detailed" class="btn btn-outline-secondary">Reset Filters</a>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary w-100 w-md-auto">Generate Report</button>
+                    <a href="?report_type=detailed" class="btn btn-outline-secondary w-100 w-md-auto" style="margin-top: 8px;">Reset Filters</a>
                 </div>
             </form>
         </div>
