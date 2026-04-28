@@ -78,6 +78,12 @@
         <a class="nav-link <?php echo (isset($activePage) && $activePage === 'reports') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/reports/index.php">
             <i class="fas fa-chart-bar"></i> Reports
         </a>
+        <a class="nav-link <?php echo (isset($activePage) && $activePage === 'consumption-reports') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/reports/consumption-reports.php">
+            <i class="fas fa-receipt"></i> Consumption Reports
+        </a>
+        <a class="nav-link <?php echo (isset($activePage) && $activePage === 'analytics') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/reports/consumption-analytics.php">
+            <i class="fas fa-chart-line"></i> Analytics
+        </a>
     <?php endif; ?>
     <?php if ($canAudit): ?>
         <a class="nav-link <?php echo (isset($activePage) && $activePage === 'audit') ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>pages/audit/index.php">

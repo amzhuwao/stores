@@ -431,6 +431,325 @@ class Consumption extends Model {
             $followStmt->execute();
         }
     }
+
+    /**
+     * Get consumption report with filtering
+     */
+    public function getConsumptionReport($filters = []) {
+        $sql = "SELECT cr.consumption_id, cr.issue_item_id, cr.quantity_consumed, cr.log_date, cr.notes,
+                        p.product_id, p.product_name, p.product_code, p.unit_of_measure,
+                        sii.quantity_issued, sii.quantity_consumed as total_consumed, sii.quantity_returned,
+                        si.issue_number, si.issue_date,
+                        d.dept_id, d.dept_name,
+                        s.store_id, s.store_name,
+                        u.full_name as logged_by_name
+                FROM consumption_records cr
+                JOIN stock_issue_items sii ON cr.issue_item_id = sii.issue_item_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN products p ON sii.product_id = p.product_id
+                JOIN departments d ON si.department_id = d.dept_id
+                JOIN stores s ON si.store_id = s.store_id
+                JOIN users u ON cr.logged_by = u.user_id
+                WHERE 1=1";
+        
+        $types = '';
+        $params = [];
+        
+        if (!empty($filters['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$filters['department_id'];
+        }
+        
+        if (!empty($filters['product_id'])) {
+            $sql .= " AND sii.product_id = ?";
+            $types .= 'i';
+            $params[] = (int)$filters['product_id'];
+        }
+        
+        if (!empty($filters['store_id'])) {
+            $sql .= " AND si.store_id = ?";
+            $types .= 'i';
+            $params[] = (int)$filters['store_id'];
+        }
+        
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.log_date) >= ?";
+            $types .= 's';
+            $params[] = $filters['start_date'];
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.log_date) <= ?";
+            $types .= 's';
+            $params[] = $filters['end_date'];
+        }
+        
+        $sql .= " ORDER BY cr.log_date DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumptionReport: " . $this->db->error);
+            return [];
+        }
+        
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumption summary by product
+     */
+    public function getConsumptionByProduct($filters = []) {
+        $sql = "SELECT p.product_id, p.product_name, p.product_code, p.unit_of_measure,
+                        COUNT(DISTINCT cr.consumption_id) as num_consumption_logs,
+                        SUM(cr.quantity_consumed) as total_quantity_consumed,
+                        COUNT(DISTINCT sii.issue_item_id) as num_issue_items
+                FROM consumption_records cr
+                JOIN stock_issue_items sii ON cr.issue_item_id = sii.issue_item_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN products p ON sii.product_id = p.product_id
+                WHERE 1=1";
+        
+        $types = '';
+        $params = [];
+        
+        if (!empty($filters['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$filters['department_id'];
+        }
+        
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.log_date) >= ?";
+            $types .= 's';
+            $params[] = $filters['start_date'];
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.log_date) <= ?";
+            $types .= 's';
+            $params[] = $filters['end_date'];
+        }
+        
+        $sql .= " GROUP BY p.product_id, p.product_name
+                  ORDER BY total_quantity_consumed DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumptionByProduct: " . $this->db->error);
+            return [];
+        }
+        
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumption summary by department
+     */
+    public function getConsumptionByDepartment($filters = []) {
+        $sql = "SELECT d.dept_id, d.dept_name,
+                        COUNT(DISTINCT cr.consumption_id) as num_consumption_logs,
+                        SUM(cr.quantity_consumed) as total_quantity_consumed,
+                        COUNT(DISTINCT si.issue_id) as num_issues,
+                        COUNT(DISTINCT sii.product_id) as num_products
+                FROM consumption_records cr
+                JOIN stock_issue_items sii ON cr.issue_item_id = sii.issue_item_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN departments d ON si.department_id = d.dept_id
+                WHERE 1=1";
+        
+        $types = '';
+        $params = [];
+        
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.log_date) >= ?";
+            $types .= 's';
+            $params[] = $filters['start_date'];
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.log_date) <= ?";
+            $types .= 's';
+            $params[] = $filters['end_date'];
+        }
+        
+        $sql .= " GROUP BY d.dept_id, d.dept_name
+                  ORDER BY total_quantity_consumed DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumptionByDepartment: " . $this->db->error);
+            return [];
+        }
+        
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumption trends over time for charting
+     */
+    public function getConsumptionTrends($filters = []) {
+        $sql = "SELECT DATE(cr.log_date) as consumption_date,
+                        SUM(cr.quantity_consumed) as daily_total,
+                        COUNT(DISTINCT cr.consumption_id) as num_logs,
+                        COUNT(DISTINCT si.department_id) as num_departments
+                FROM consumption_records cr
+                JOIN stock_issue_items sii ON cr.issue_item_id = sii.issue_item_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                WHERE 1=1";
+        
+        $types = '';
+        $params = [];
+        
+        if (!empty($filters['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$filters['department_id'];
+        }
+        
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.log_date) >= ?";
+            $types .= 's';
+            $params[] = $filters['start_date'];
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.log_date) <= ?";
+            $types .= 's';
+            $params[] = $filters['end_date'];
+        }
+        
+        $sql .= " GROUP BY DATE(cr.log_date)
+                  ORDER BY consumption_date ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumptionTrends: " . $this->db->error);
+            return [];
+        }
+        
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get top consumed products
+     */
+    public function getTopConsumedProducts($limit = 10, $filters = []) {
+        $sql = "SELECT p.product_id, p.product_name, p.product_code,
+                        SUM(cr.quantity_consumed) as total_consumed,
+                        COUNT(DISTINCT cr.consumption_id) as consumption_count,
+                        AVG(cr.quantity_consumed) as avg_per_log
+                FROM consumption_records cr
+                JOIN stock_issue_items sii ON cr.issue_item_id = sii.issue_item_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                JOIN products p ON sii.product_id = p.product_id
+                WHERE 1=1";
+        
+        $types = '';
+        $params = [];
+        
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.log_date) >= ?";
+            $types .= 's';
+            $params[] = $filters['start_date'];
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.log_date) <= ?";
+            $types .= 's';
+            $params[] = $filters['end_date'];
+        }
+        
+        $sql .= " GROUP BY p.product_id
+                  ORDER BY total_consumed DESC
+                  LIMIT ?";
+        $types .= 'i';
+        $params[] = (int)$limit;
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getTopConsumedProducts: " . $this->db->error);
+            return [];
+        }
+        
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get consumption summary statistics
+     */
+    public function getConsumptionStats($filters = []) {
+        $sql = "SELECT COUNT(DISTINCT cr.consumption_id) as total_logs,
+                        SUM(cr.quantity_consumed) as total_quantity,
+                        AVG(cr.quantity_consumed) as avg_quantity,
+                        MAX(cr.quantity_consumed) as max_quantity,
+                        MIN(cr.quantity_consumed) as min_quantity,
+                        COUNT(DISTINCT si.department_id) as num_departments,
+                        COUNT(DISTINCT sii.product_id) as num_products
+                FROM consumption_records cr
+                JOIN stock_issue_items sii ON cr.issue_item_id = sii.issue_item_id
+                JOIN stock_issues si ON sii.issue_id = si.issue_id
+                WHERE 1=1";
+        
+        $types = '';
+        $params = [];
+        
+        if (!empty($filters['department_id'])) {
+            $sql .= " AND si.department_id = ?";
+            $types .= 'i';
+            $params[] = (int)$filters['department_id'];
+        }
+        
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND DATE(cr.log_date) >= ?";
+            $types .= 's';
+            $params[] = $filters['start_date'];
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND DATE(cr.log_date) <= ?";
+            $types .= 's';
+            $params[] = $filters['end_date'];
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("SQL Error in getConsumptionStats: " . $this->db->error);
+            return null;
+        }
+        
+        if ($types !== '') {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
 }
 ?>
 
